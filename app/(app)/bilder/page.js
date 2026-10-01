@@ -1,4 +1,5 @@
 import { pageContext } from "@/lib/subject";
+import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
 import { MEDIA_KINDS } from "@/lib/catalog";
@@ -49,7 +50,7 @@ export default async function Bilder({ searchParams, demo } = {}) {
         {!blobOk && <div className="notice warn">Der Dateispeicher ist noch nicht verbunden.</div>}
         <ActionForm action={uploadMedia} submit="Hochladen">
           <label className="f">Art<select name="kind" defaultValue={MEDIA_KINDS[sp?.art] ? sp.art : "body_photo"}>{Object.entries(MEDIA_KINDS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
-          <label className="f">Datum<input type="date" name="day" defaultValue={todayIso()} /></label>
+          <label className="f">Datum<DateField name="day" defaultValue={todayIso()} /></label>
           <label className="f">Pose (bei Körperfotos)<select name="pose" defaultValue="front"><option value="front">Front</option><option value="side">Seite</option><option value="back">Rücken</option></select></label>
           <label className="f">Notiz<input type="text" name="note" maxLength={200} placeholder="z. B. nüchtern, morgens" /></label>
           <label className="f">Dateien (Bild oder PDF, max. 4 MB)<input type="file" name="file" accept="image/*,application/pdf" multiple required /></label>

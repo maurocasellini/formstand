@@ -6,11 +6,12 @@ import crypto from "node:crypto";
 import * as repo from "@/lib/repo";
 import { viewerAndSubject } from "@/lib/subject";
 import { seedDemo, clearDemo } from "@/lib/demo";
-import { syncUser, syncConnection } from "@/lib/sync";
+import { syncUser, syncConnection, athleteZones } from "@/lib/sync";
+import { weekPlan, mondayOf } from "@/lib/plan";
 import { todayIso } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
-import { aiReady, comparePhotos as aiComparePhotos } from "@/lib/ai";
+import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent } from "@/lib/ai";
 import { applyInBody } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
@@ -249,13 +250,44 @@ export async function addEvent(_prev, form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;
   const name = String(form.get("name") || "").trim().slice(0, 80), date = String(form.get("date") || "");
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Name und Datum angeben." };
+  if (!name) return { error: "Gib dem Wettkampf einen Namen." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Datum wählen." };
   if (date < todayIso()) return { error: "Das Datum liegt in der Vergangenheit." };
   const type = EVENT_TYPES[String(form.get("type"))] ? String(form.get("type")) : "sonst";
   const priority = ["A", "B", "C"].includes(String(form.get("priority"))) ? String(form.get("priority")) : "B";
-  await repo.updateGoals(subject.id, (g) => ({ ...g, events: [...(g.events || []), { id: crypto.randomUUID(), name, date, type, priority, target: String(form.get("target") || "").slice(0, 120) || null }].sort((a, b) => (a.date < b.date ? -1 : 1)), updated_at: new Date().toISOString() }));
+  const txt = (k, n) => String(form.get(k) || "").trim().slice(0, n) || null;
+  let points = [];
+  try { points = JSON.parse(String(form.get("points") || "[]")).filter((x) => typeof x === "string").slice(0, 4).map((x) => x.slice(0, 120)); } catch {}
+  const addWeak = form.get("takeWeak") === "1" ? String(form.get("weak") || "").split(",").filter((w) => WEAKNESSES[w]) : [];
+  const ev = { id: crypto.randomUUID(), name, date, type, priority, target: txt("target", 120), variant: txt("variant", 60), info: txt("info", 300), place: txt("place", 80), url: /^https?:\/\//.test(String(form.get("url") || "")) ? txt("url", 300) : null, points };
+  await repo.updateGoals(subject.id, (g) => {
+    const weaknesses = [...new Set([...(g.weaknesses || []), ...addWeak])].slice(0, 4);
+    return { ...g, events: [...(g.events || []), ev].sort((a, b) => (a.date < b.date ? -1 : 1)), weaknesses, updated_at: new Date().toISOString() };
+  });
   revalidatePath("/", "layout");
   return { ok: `${name} eingetragen.` };
+}
+
+// Wettkampf per KI im Web suchen und einordnen (nur auf Knopfdruck)
+export async function findEvent(query) {
+  const { subject, demo } = await ctx();
+  if (demo) return { error: "In der Demo ist die Suche ausgeschaltet." };
+  const q = String(query || "").trim().slice(0, 120);
+  if (q.length < 3) return { error: "Mindestens 3 Zeichen eingeben." };
+  if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet – trag den Wettkampf einfach unten ein." };
+  try {
+    const r = await aiFindEvent(q, { types: Object.keys(EVENT_TYPES).join(", "), weaknesses: Object.keys(WEAKNESSES).join(", "), today: todayIso() }, subject.id);
+    const variants = Array.isArray(r.varianten) ? r.varianten.filter((v) => v && v.name).slice(0, 6).map((v) => ({ name: String(v.name).slice(0, 60), text: String(v.beschreibung || "").slice(0, 200) })) : [];
+    return { result: {
+      found: r.gefunden !== false, name: String(r.name || q).slice(0, 80), place: r.ort ? String(r.ort).slice(0, 80) : null,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(r.datum || "") && r.datum >= todayIso() ? r.datum : null, dateSure: Boolean(r.datum_sicher),
+      type: EVENT_TYPES[r.typ] ? r.typ : "sonst", info: r.beschreibung ? String(r.beschreibung).slice(0, 300) : null,
+      variants, question: r.frage ? String(r.frage).slice(0, 200) : null,
+      points: Array.isArray(r.schwerpunkte) ? r.schwerpunkte.filter((x) => typeof x === "string").slice(0, 4).map((x) => x.slice(0, 120)) : [],
+      weak: Array.isArray(r.schwaechen) ? r.schwaechen.filter((w) => WEAKNESSES[w]).slice(0, 4) : [],
+      url: /^https?:\/\//.test(r.url || "") ? String(r.url).slice(0, 300) : null, searched: r.searched,
+    } };
+  } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
 }
 export async function deleteEvent(form) {
   const { subject, demo } = await ctx();
@@ -301,6 +333,7 @@ export async function savePlanDay(_prev, form) {
   const date = String(form.get("date") || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Tag wählen." };
   const mode = String(form.get("mode") || "plan");
+  if (mode === "swap") return swapDays(subject.id, date, String(form.get("with") || ""));
   const repeat = form.get("repeat") === "1";
   const dow = (new Date(date + "T12:00:00Z").getUTCDay() + 6) % 7;
   const min = scale(form.get(mode === "session" ? "dur" : "min"), 10, 600);
@@ -311,11 +344,13 @@ export async function savePlanDay(_prev, form) {
     const type = PLAN_TYPES.includes(String(form.get("type"))) ? String(form.get("type")) : "easy";
     const title = String(form.get("title") || "").trim().slice(0, 60);
     if (!title) return { error: "Gib dem Training einen Namen, z. B. „Ausfahrt mit Buddy“." };
-    entry = { kind: "session", type, sport: ["bike", "run", "swim", "strength", "other"].includes(String(form.get("sport"))) ? String(form.get("sport")) : null, title, min: min || 60, note: String(form.get("note") || "").slice(0, 160) || null };
+    entry = { kind: "session", type, sport: ["bike", "run", "swim", "strength", "hyrox", "other"].includes(String(form.get("sport"))) ? String(form.get("sport")) : null, title, min: min || 60, note: String(form.get("note") || "").slice(0, 160) || null };
   }
   const cutoff = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+  const g0 = await repo.getGoals(subject.id);
+  const frozen = pastOf(await planItems(subject.id, g0, date), g0);
   await repo.updateGoals(subject.id, (g) => {
-    const overrides = Object.fromEntries(Object.entries(g.overrides || {}).filter(([d]) => d >= cutoff));
+    const overrides = { ...frozen, ...Object.fromEntries(Object.entries(g.overrides || {}).filter(([d]) => d >= cutoff)) };
     let fixed = [...(g.fixed || [])];
     if (!entry) {
       delete overrides[date];
@@ -329,6 +364,33 @@ export async function savePlanDay(_prev, form) {
   });
   revalidatePath("/", "layout");
   return { ok: entry ? (repeat ? "Gespeichert – gilt ab jetzt jede Woche." : "Gespeichert – der Rest der Woche ist neu verteilt.") : "Zurück auf den Vorschlag." };
+}
+// Plan-Eintrag als eigener Eintrag (für Tausch und zum Einfrieren vergangener Tage)
+const asEntry = (it, extra = {}) => (it.type === "rest" || !it.min
+  ? { kind: "off", title: it.title, note: it.detail || null, ...extra }
+  : { kind: "session", type: ["quality", "long", "strength"].includes(it.type) ? it.type : "easy", sport: it.sport || (it.type === "strength" ? "strength" : null), title: it.title, min: it.min, note: String(it.detail || "").slice(0, 400) || null, ...(extra.frozen && it.second ? { second: it.second } : {}), ...(extra.frozen && it.focus ? { focus: it.focus } : {}), ...extra });
+// Vergangene Tage der Woche festhalten, damit eine Änderung sie nicht nachträglich umplant
+const pastOf = (items, goals) => Object.fromEntries(items.filter((x) => x.day < todayIso() && !goals.overrides?.[x.day] && x.type !== "race").map((x) => [x.day, asEntry(x, { frozen: true })]));
+async function planItems(userId, goals, date) {
+  const user = await repo.getUser(userId);
+  return weekPlan(goals, mondayOf(date), user || {}, await athleteZones(userId)).items;
+}
+
+// Zwei Tage tauschen: beide werden zu eigenen Einträgen mit dem Inhalt des anderen Tages
+async function swapDays(userId, a, b) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b) || a === b) return { error: "Tag zum Tauschen wählen." };
+  if (a < todayIso() || b < todayIso()) return { error: "Nur heute und kommende Tage lassen sich tauschen." };
+  const [goals, user] = await Promise.all([repo.getGoals(userId), repo.getUser(userId)]);
+  const zones = await athleteZones(userId);
+  const items = [...weekPlan(goals, mondayOf(a), user || {}, zones).items, ...(mondayOf(a) === mondayOf(b) ? [] : weekPlan(goals, mondayOf(b), user || {}, zones).items)];
+  const A = items.find((x) => x.day === a), B = items.find((x) => x.day === b);
+  if (!A || !B) return { error: "Tag nicht im Plan gefunden." };
+  if (A.type === "race" || B.type === "race") return { error: "Wettkampftage lassen sich nicht tauschen." };
+  const entry = (it) => (it.type === "rest" || !it.min ? { kind: "off", title: "Ruhetag (getauscht)", note: "Mit einem anderen Tag getauscht." } : asEntry(it));
+  const frozen = pastOf(items, goals);
+  await repo.updateGoals(userId, (g) => ({ ...g, overrides: { ...frozen, ...(g.overrides || {}), [a]: entry(B), [b]: entry(A) }, updated_at: g.updated_at || new Date().toISOString() }));
+  revalidatePath("/", "layout");
+  return { ok: "Getauscht." };
 }
 export async function deleteFixed(form) {
   const { subject, demo } = await ctx();

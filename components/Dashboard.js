@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import DateField from "./DateField";
 
 const MON = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 const RANGES = { woche: 7, monat: 30, quartal: 91, jahr: 365 };
@@ -86,8 +87,8 @@ export default function Dashboard({ demo = false }) {
       <Seg value={range} onChange={setRange} options={[["woche", "Woche"], ["monat", "Monat"], ["quartal", "Quartal"], ["jahr", "Jahr"], ["custom", "Eigener"]]} />
       {range === "custom" && (
         <div className="form">
-          <label className="f">Von<input type="date" value={custom.from || from} max={today} onChange={(e) => setCustom({ ...custom, from: e.target.value, to: custom.to || to })} /></label>
-          <label className="f">Bis<input type="date" value={custom.to || to} max={today} onChange={(e) => setCustom({ ...custom, to: e.target.value, from: custom.from || from })} /></label>
+          <label className="f">Von<DateField value={custom.from || from} max={today} onChange={(v) => setCustom({ ...custom, from: v, to: custom.to || to })} required /></label>
+          <label className="f">Bis<DateField value={custom.to || to} max={today} onChange={(v) => setCustom({ ...custom, to: v, from: custom.from || from })} required /></label>
         </div>
       )}
       <Seg small value={group} onChange={setGroup} options={[["auto", "Auto"], ["tag", "Tage"], ["woche", "Wochen"], ["monat", "Monate"]]} />

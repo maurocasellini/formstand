@@ -1,4 +1,5 @@
 import { pageContext } from "@/lib/subject";
+import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
@@ -32,7 +33,7 @@ export default async function Eingaben({ demo } = {}) {
       <section className="panel">
         <div className="panel-head"><h2 id="training">Training nachtragen</h2><span className="note">für Einheiten ohne Uhr – zählt für Belastung, Muskulatur und Plan-Treue</span></div>
         <ActionForm action={addWorkout} submit="Eintragen">
-          <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
+          <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
           <label className="f">Sport<select name="sport" defaultValue="bike"><option value="bike">Rad</option><option value="run">Laufen</option><option value="swim">Schwimmen</option><option value="strength">Kraft</option><option value="hike">Wandern</option><option value="other">Anderes</option></select></label>
           <label className="f">Name<input type="text" name="title" maxLength={60} placeholder="z. B. Ausfahrt mit Buddy" /></label>
           <label className="f">Dauer min<input type="number" name="min" min="5" max="900" required /></label>
@@ -50,12 +51,12 @@ export default async function Eingaben({ demo } = {}) {
           <h2 id="gewicht">Gewicht &amp; Körperfett</h2>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="weight" />
-            <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
+            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
             <label className="f">Gewicht kg<input type="number" name="value" step="0.1" min="30" max="250" required /></label>
           </ActionForm>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="bodyfat" />
-            <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
+            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
             <label className="f">Körperfett %<input type="number" name="value" step="0.1" min="3" max="60" required /></label>
           </ActionForm>
           <p className="note">InBody-Blatt lieber unter „Bilder &amp; Dokumente“ hochladen, damit das Original erhalten bleibt.</p>
@@ -64,7 +65,7 @@ export default async function Eingaben({ demo } = {}) {
           <h2 id="trigger">Trigger</h2>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="trigger" />
-            <label className="f">Datum (Abend)<input type="date" name="day" defaultValue={today} max={today} /></label>
+            <label className="f">Datum (Abend)<DateField name="day" defaultValue={today} max={today} /></label>
             <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
             <label className="f">Menge<input type="number" name="value" min="1" max="20" defaultValue="1" /></label>
           </ActionForm>
@@ -104,7 +105,7 @@ export default async function Eingaben({ demo } = {}) {
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="test" />
             <label className="f">Test<select name="test">{Object.entries(TEST_TYPES).map(([k, t]) => <option key={k} value={k}>{t.name} · {t.label}</option>)}</select></label>
-            <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
+            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
             <label className="f">Wert<input type="number" name="value" min="1" max="2000" required /></label>
             <label className="f">Notiz<input type="text" name="note" maxLength={80} placeholder="z. B. Pace 4:45/km" /></label>
           </ActionForm>

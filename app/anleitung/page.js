@@ -118,13 +118,13 @@ export default async function Anleitung() {
             <li>Auf <b>Ziele & Plan</b> gehen.</li>
             <li><b>Hauptziel</b> wählen (Leistung, Form halten, Abnehmen, Muskelaufbau, Gesundheit).</li>
             <li><b>Schwächen</b> anklicken, an denen du arbeiten willst (bis 4), und die wichtigste auswählen.</li>
-            <li><b>Trainingstage</b>, <b>Stunden pro Woche</b> und den <b>langen Tag</b> eintragen → Speichern.</li>
-            <li><b>Wettkämpfe</b> eintragen: A = Saisonhöhepunkt (voller Aufbau mit Tapering), B = wichtig, C = Training.</li>
+            <li><b>Trainingstage</b>, <b>Stunden pro Woche</b> und den <b>Tag für die lange Einheit</b> eintragen (die längste ruhige Ausfahrt bzw. der lange Lauf, meist am Wochenende) → Speichern.</li>
+            <li><b>Wettkämpfe</b>: Namen ins Suchfeld (z. B. „ATHX St. Gallen“) → <b>Suchen</b>. Formstand findet Datum, Format und Kategorien und fragt nach, welche du startest (z. B. Single oder Doubles). Dann Priorität wählen: A = Saisonhöhepunkt (voller Aufbau mit Tapering), B = wichtig, C = Training.</li>
           </ol>
           <p className="note">Daraus entsteht dein Wochenplan. Die Tagesentscheidung folgt ihm, solange dein Körper mitmacht.</p>
           <h3>Plan an dein Leben anpassen</h3>
           <ul>
-            <li>Im Wochenplan bei einem Tag auf <b>anpassen</b>: <b>Keine Zeit</b>, <b>Nur begrenzt Zeit</b> (z. B. 45 min) oder <b>Eigenes Training</b> (z. B. „Ausfahrt mit Buddy“, hart, 120 min).</li>
+            <li>Formstand schlägt die Woche vor, du passt an: bei einem Tag auf <b>Anpassen</b> – <b>Anders trainieren</b> (Vorschlag ist vorausgefüllt, z. B. auf „Ausfahrt mit Buddy“, hart, 120 min ändern), <b>Mit anderem Tag tauschen</b>, <b>Nur begrenzt Zeit</b> oder <b>Ruhetag</b>.</li>
             <li>Häkchen <b>jede Woche so</b> setzen, dann wird es ein fester Termin (z. B. jeden Dienstag Gruppenausfahrt). Der Plan baut die Woche darum herum.</li>
             <li>Training ohne Uhr gemacht? Unter <b>Eingaben → Training nachtragen</b> mit Dauer und Anstrengung eintragen.</li>
           </ul>

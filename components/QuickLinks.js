@@ -2,7 +2,7 @@ import Link from "next/link";
 
 // Schnellzugriff auf der Übersicht: Wohin für welche Aufgabe.
 const LINKS = [
-  ["/ziele#anpassen", "Training anpassen", "Keine Zeit, mit Buddy, fester Termin"],
+  ["/ziele?d=today#plan", "Training anpassen", "Keine Zeit, mit Buddy, fester Termin"],
   ["/eingaben#training", "Training nachtragen", "Einheit ohne Uhr erfassen"],
   ["/ziele#plan", "Wochenplan", "Was diese Woche ansteht"],
   ["/ziele#wettkampf", "Wettkämpfe & Ziele", "Rennen, Schwächen, Zeitbudget"],
