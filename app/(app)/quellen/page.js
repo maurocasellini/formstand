@@ -44,8 +44,9 @@ export default async function Quellen({ searchParams }) {
               {c && <p>Letzter Abgleich: {when(c.last_sync_at)}{c.last_error ? ` · ${c.last_error}` : ""}</p>}
               {!c && ready && own && p.apiKey && (
                 <ActionForm action={connectIntervals} className="stack" submit="Verbinden">
-                  <label className="f">Athleten-ID<input type="text" name="athlete" placeholder="i123456" autoComplete="off" /></label>
                   <label className="f">API-Schlüssel<input type="password" name="key" required autoComplete="off" /></label>
+                  <label className="f">Athleten-ID (optional)<input type="text" name="athlete" placeholder="i123456" autoComplete="off" /></label>
+                  <p className="note">Zu finden auf <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer">intervals.icu/settings</a> ganz unten unter <b>Entwicklereinstellungen</b> (Developer Settings). <a href="/anleitung#garmin">Schritt für Schritt</a></p>
                 </ActionForm>
               )}
               {!c && ready && own && !p.apiKey && <a className="btn" href={`/api/connect/${p.id}`}>Mit {p.name} verbinden</a>}

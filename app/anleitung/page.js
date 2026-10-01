@@ -57,31 +57,32 @@ export default async function Anleitung() {
           <p className="note">Ab jetzt Formstand immer über das Symbol öffnen.</p>
         </Step>
 
-        <Step n="3" id="garmin" title="Garmin verbinden – über intervals.icu" time="5–10 Minuten">
+        <Step n="3" id="garmin" title="Uhr und Apps verbinden – über intervals.icu" time="5–10 Minuten">
           <p>Garmin gibt seine Schnittstelle nur Firmen. Der Weg führt deshalb über <b>intervals.icu</b>: kostenlos, seriös und bei Ausdauersportlern verbreitet. intervals.icu holt deine Daten von Garmin, Formstand holt sie von intervals.icu – Schlaf, HRV, Ruhepuls, Body Battery, Stress, VO2max und alle Aktivitäten.</p>
           <h3>a) Konto bei intervals.icu</h3>
           <ol>
             <li>Auf <a href="https://intervals.icu" target="_blank" rel="noreferrer">intervals.icu</a> ein Konto erstellen (mit E-Mail oder „mit Strava anmelden“).</li>
           </ol>
-          <h3>b) Garmin mit intervals.icu verbinden</h3>
+          <h3>b) Uhr und Apps mit intervals.icu verbinden</h3>
           <ol>
-            <li>In intervals.icu auf <b>Settings</b> (Einstellungen) gehen.</li>
-            <li>Im Bereich <b>Connections</b> bei <b>Garmin Connect</b> auf <b>Connect</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben.</li>
-            <li><b>Wichtig:</b> bei der Garmin-Verbindung auch die <b>Wellness-Daten</b> (Schlaf, HRV, Ruhepuls) erlauben bzw. das entsprechende Häkchen setzen. Ohne Wellness-Daten fehlt die Tagesform.</li>
+            <li>In intervals.icu links auf <b>Einstellungen</b> (Settings) gehen.</li>
+            <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben. Wichtig: auch die <b>Wellness-Daten</b> (Schlaf, HFV/HRV, Ruhe-HF) erlauben, sonst fehlt die Tagesform.</li>
+            <li>Gleich dort kannst du alles weitere anhängen, das du nutzt: <b>WHOOP, Polar, Oura, Zwift, Wahoo, COROS, Suunto</b> … Formstand bekommt dann alles gesammelt über intervals.icu. intervals.icu ist damit deine Hauptquelle.</li>
           </ol>
-          <h3>c) Schlüssel in intervals.icu holen</h3>
+          <h3>c) API-Schlüssel in intervals.icu holen</h3>
           <ol>
-            <li>In den Settings ganz nach unten zu <b>Developer Settings</b> scrollen.</li>
-            <li>Dort stehen deine <b>Athlete ID</b> (beginnt mit „i“, z. B. <span className="num">i123456</span>) und der <b>API Key</b> (auf „View“ bzw. „Generate“ klicken).</li>
-            <li>Beides kopieren. Der API Key ist wie ein Passwort: nur in Formstand einfügen, nicht weitergeben.</li>
+            <li>Direkt öffnen: <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer">intervals.icu/settings</a> (oder links auf <b>Einstellungen</b>).</li>
+            <li>Ganz nach unten scrollen bis zum Abschnitt <b>Entwicklereinstellungen</b> (englisch <b>Developer Settings</b>), meist das letzte Feld der Seite.</li>
+            <li>Dort steht die <b>Athleten-ID</b> (beginnt mit „i“, z. B. <span className="num">i123456</span>) und daneben der <b>API-Schlüssel</b>. Ist noch keiner da: auf <b>Generieren</b>/<b>Generate</b> klicken, sonst auf <b>Anzeigen</b>/<b>View</b>.</li>
+            <li>Den API-Schlüssel kopieren. Er ist wie ein Passwort: nur in Formstand einfügen, nicht weitergeben. Die Athleten-ID ist optional – ohne sie nimmt Formstand automatisch dein eigenes Konto.</li>
           </ol>
           <h3>d) In Formstand einfügen</h3>
           <ol>
             <li>In Formstand auf <b>Quellen</b> gehen.</li>
-            <li>Bei <b>intervals.icu</b> die <b>Athleten-ID</b> und den <b>API-Schlüssel</b> einfügen → <b>Verbinden</b>.</li>
+            <li>Bei <b>intervals.icu</b> den <b>API-Schlüssel</b> (und optional die Athleten-ID) einfügen → <b>Verbinden</b>.</li>
             <li>Formstand lädt sofort die letzten 12 Monate (kann eine halbe Minute dauern). Danach holt es jeden Morgen automatisch die neuen Daten.</li>
           </ol>
-          <p className="note">Die Bezeichnungen in intervals.icu sind englisch und können sich leicht ändern; die Abschnitte heissen sinngemäss gleich.</p>
+          <p className="note">intervals.icu gibt es auf Deutsch und Englisch; die Bezeichnungen können sich leicht ändern, die Abschnitte heissen sinngemäss gleich. Strava lässt sich nicht über intervals.icu an Formstand weitergeben (Strava verbietet das) – wer Strava will, verbindet es in Formstand separat. Doppelte Einheiten erkennt Formstand und zählt sie nur einmal.</p>
         </Step>
 
         <Step n="4" id="historie" title="Optional: die ganze Garmin-Historie" time="5 Minuten + Wartezeit">
@@ -94,11 +95,11 @@ export default async function Anleitung() {
           </ol>
         </Step>
 
-        <Step n="5" id="strava" title="Strava, Zwift und WHOOP" time="je 1 Minute">
+        <Step n="5" id="strava" title="Optional: Strava separat" time="1 Minute">
           <ul>
-            <li><b>Strava:</b> Quellen → <b>Mit Strava verbinden</b> → bei Strava anmelden → Zugriff erlauben. Nur nötig, wenn deine Workouts nicht schon über Garmin kommen.</li>
-            <li><b>Zwift:</b> In der Zwift-App unter <b>Einstellungen → Verbindungen</b> Strava und/oder Garmin verknüpfen. Die Fahrten kommen dann automatisch, doppelte werden zusammengeführt.</li>
-            <li><b>WHOOP:</b> Quellen → <b>Mit WHOOP verbinden</b> → anmelden → Zugriff erlauben.</li>
+            <li><b>Zwift, WHOOP, Polar, Oura &amp; Co.:</b> am einfachsten direkt in intervals.icu verbinden (Schritt 3). Dann ist hier nichts weiter nötig.</li>
+            <li><b>Strava:</b> nur nötig, wenn Workouts <i>nur</i> auf Strava landen. Quellen → <b>Mit Strava verbinden</b> → bei Strava anmelden → Zugriff erlauben. Doppelte Einheiten werden zusammengeführt.</li>
+            <li><b>WHOOP direkt:</b> geht auch über Quellen → <b>Mit WHOOP verbinden</b>, liefert zusätzlich Strain und Recovery. Nicht nötig, wenn WHOOP schon in intervals.icu hängt.</li>
           </ul>
           <p className="note">Steht bei Strava oder WHOOP „noch nicht freigeschaltet“, muss der Admin das einmalig erledigen (siehe unten).</p>
         </Step>
