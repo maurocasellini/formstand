@@ -8,7 +8,7 @@ const LINKS = [
   ["/ziele#wettkampf", "Wettkämpfe & Ziele", "Rennen, Schwächen, Zeitbudget"],
   ["/bilder#hinzufuegen", "Foto / InBody hochladen", "Formstand erkennt selbst, was es ist"],
   ["/bilder#verlauf", "Körperentwicklung", "InBody, Fotos, Vorher/Nachher"],
-  ["/eingaben#gewicht", "Messungen", "Gewicht, Körperfett, Tests, Trigger"],
+  ["/eingaben#gewicht", "Messungen", "Gewicht, Körperfett, Tests, Einflussfaktoren"],
   ["/entwicklung", "Entwicklung", "Was sich verändert hat"],
 ];
 

@@ -87,7 +87,7 @@ export default async function Anleitung() {
         </Step>
 
         <Step n="4" id="historie" title="Optional: die ganze Garmin-Historie" time="5 Minuten + Wartezeit">
-          <p>intervals.icu liefert die letzten Monate. Wer Jahre zurück will (z. B. für Trends und Trigger-Auswertungen):</p>
+          <p>intervals.icu liefert die letzten Monate. Wer Jahre zurück will (z. B. für Trends und Einflussfaktoren):</p>
           <ol>
             <li>Auf <a href="https://connect.garmin.com" target="_blank" rel="noreferrer">connect.garmin.com</a> anmelden (am Computer).</li>
             <li>Profilbild → <b>Kontoeinstellungen</b> → <b>Datenverwaltung</b> → <b>Daten exportieren</b> → Export anfordern.</li>
@@ -143,7 +143,7 @@ export default async function Anleitung() {
             <li><b>Morgens:</b> Uhr synchronisieren (Garmin-App kurz öffnen), dann in Formstand einchecken: Energie, Motivation, Stress, Muskelkater, Zeit für Training.</li>
             <li>Die <b>Entscheidung für heute</b> lesen – inklusive „nicht empfohlen“ und Ernährung.</li>
             <li><b>Nach dem Training:</b> bei „Wie hart war's?“ die Anstrengung antippen.</li>
-            <li><b>Abends:</b> unter „Abend-Faktoren“ Alkohol (Gläser) und weitere Faktoren antippen – spät gegessen, Stress, Sauna, Mobility … Vergessen? Einfach ein früheres Datum wählen oder unter Eingaben die letzten 14 Abende auf einmal nachtragen. Formstand lernt daraus, wie du am Morgen danach reagierst.</li>
+            <li><b>Einflussfaktoren:</b> Alkohol (Gläser) und weitere Faktoren antippen – spät gegessen, Stress, Sauna, Mobility … Vergessen? Einfach ein früheres Datum wählen oder unter Eingaben die letzten 14 Tage auf einmal nachtragen. Formstand lernt daraus, wie du am Morgen danach reagierst.</li>
           </ol>
         </Step>
 

@@ -43,7 +43,7 @@ export async function addManual(_prev, form) {
   return { ok: "Gespeichert." };
 }
 
-// Abend-Faktoren: Alkohol (Gläser) getrennt, weitere Faktoren zum Antippen. Ein Abend oder viele Abende (Nachtragen).
+// Einflussfaktoren: Alkohol (Gläser) getrennt, weitere Faktoren zum Antippen. Ein Abend oder viele Abende (Nachtragen).
 const FACTOR_KEYS = new Set(TRIGGERS.map((x) => x[0]));
 const eveningOf = (form, sfx = "") => {
   const out = [];
@@ -69,7 +69,7 @@ export async function saveEveningGrid(_prev, form) {
   const byDay = Object.fromEntries(days.map((d) => [d, eveningOf(form, `_${d}`)]));
   await repo.setTriggers(subject.id, byDay, viewer.id);
   revalidatePath("/", "layout");
-  return { ok: `${days.length} Abende gespeichert.` };
+  return { ok: `${days.length} Tage gespeichert.` };
 }
 
 export async function deleteManual(form) {

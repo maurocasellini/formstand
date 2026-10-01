@@ -245,7 +245,7 @@ export default async function Heute({ demo } = {}) {
       )}
 
       <section className="panel">
-        <div className="panel-head"><h2>Abend-Faktoren</h2><Link className="note" href={`${base}/eingaben#trigger`}>Mehrere Abende nachtragen →</Link></div>
+        <div className="panel-head"><h2>Einflussfaktoren</h2><Link className="note" href={`${base}/eingaben#trigger`}>Mehrere Tage nachtragen →</Link></div>
         <EveningForm entries={eveningMap(manual, addDays(today, -60))} today={today} action={saveEvening} factors={TRIGGERS.filter(([k]) => k !== "alkohol")} />
         {todayTrig.length > 0 && <p className="note">{todayTrig.map((t) => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? `Deine Reaktion nach ${triggerName(t.data?.t)}: HRV ${r.metrics.hrv.diff > 0 ? "+" : "−"}${Math.abs(Math.round(r.metrics.hrv.diff))} %${r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}. ` : ""; }).join("")}</p>}
       </section>

@@ -77,7 +77,7 @@ export default async function Entwicklung({ demo } = {}) {
           {sum.adherence != null && <li><b>Plan-Treue 4 Wochen: {sum.adherence} %</b>{sum.followedNext != null ? ` – wenn du der Empfehlung gefolgt bist, war die Bereitschaft am Folgetag im Schnitt ${Math.abs(Math.round(sum.followedNext - sum.otherNext))} ${Math.abs(Math.round(sum.followedNext - sum.otherNext)) === 1 ? "Punkt" : "Punkte"} ${sum.followedNext >= sum.otherNext ? "höher" : "tiefer"}.` : "."} <Link href={`${base}/ziele`}>Details</Link></li>}
           {trig.map((t) => <li key={t}>{t}</li>)}
           {pairs.map((p) => <li key={p.a + p.b}>{pairLine(p)}</li>)}
-          {!trig.length && <li className="muted">Trage Abend-Faktoren (Alkohol, spätes Essen, Mobility …) ein – nach einigen Wochen siehst du hier deine Reaktion darauf.</li>}
+          {!trig.length && <li className="muted">Trage Einflussfaktoren (Alkohol, spätes Essen, Mobility …) ein – nach einigen Wochen siehst du hier deine Reaktion darauf.</li>}
         </ul>
       </section>
 

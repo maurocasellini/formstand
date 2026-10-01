@@ -10,7 +10,7 @@ import { INBODY_FIELDS } from "@/lib/ai";
 import { analyzeTriggers, analyzePairs, pairLine } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
 
-const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Trigger", test: "Leistungstest", note: "Notiz" };
+const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Einflussfaktor", test: "Leistungstest", note: "Notiz" };
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 
@@ -70,14 +70,14 @@ export default async function Eingaben({ demo } = {}) {
       </section>
 
       <section className="panel">
-        <div className="panel-head"><h2 id="trigger">Abend-Faktoren</h2><span className="note">Alkohol und alles, was die Nacht beeinflussen kann – auch rückwirkend</span></div>
+        <div className="panel-head"><h2 id="trigger">Einflussfaktoren</h2><span className="note">Alkohol und alles, was die Nacht beeinflussen kann – auch rückwirkend</span></div>
         <EveningForm entries={eve} today={today} action={saveEvening} factors={FACTORS} />
         <details className="evgrid">
-          <summary>Letzte 14 Abende auf einmal nachtragen oder korrigieren</summary>
-          <ActionForm action={saveEveningGrid} className="stack" submit="Alle 14 Abende speichern" reset={false}>
+          <summary>Letzte 14 Tage auf einmal nachtragen oder korrigieren</summary>
+          <ActionForm action={saveEveningGrid} className="stack" submit="Alle 14 Tage speichern" reset={false}>
             <input type="hidden" name="days" value={gridDays.join(",")} />
             <div className="tbl-wrap"><table className="egrid">
-              <thead><tr><th>Abend</th><th>Alkohol (Gl.)</th><th>Weitere Faktoren</th></tr></thead>
+              <thead><tr><th>Tag</th><th>Alkohol (Gl.)</th><th>Weitere Faktoren</th></tr></thead>
               <tbody>{gridDays.map((d) => {
                 const e = eve[d] || { alc: 0, f: [] };
                 return (
@@ -91,7 +91,7 @@ export default async function Eingaben({ demo } = {}) {
             </table></div>
           </ActionForm>
         </details>
-        <p className="note">Weiter zurück? Oben im Datum einen beliebigen Abend wählen. Wie du am Morgen danach reagierst, steht gleich unten.</p>
+        <p className="note">Weiter zurück? Oben ein beliebiges Datum wählen. Wie du am Morgen danach reagierst, steht gleich unten.</p>
       </section>
 
       <section className="panel">
@@ -108,7 +108,7 @@ export default async function Eingaben({ demo } = {}) {
               <p className="lv">{r.level}</p>
             </div>
           );
-        })}</div> : <div className="empty">Noch keine Faktoren eingetragen. Trage z. B. Alkohol, spätes Essen oder Mobility am Abend ein – nach einigen Wochen siehst du hier deine Reaktion am Morgen danach.</div>}
+        })}</div> : <div className="empty">Noch keine Faktoren eingetragen. Trage z. B. Alkohol, spätes Essen oder Mobility ein – nach einigen Wochen siehst du hier deine Reaktion am Morgen danach.</div>}
         {pairs.length > 0 && (<>
           <h3>Kombinationen</h3>
           <ul className="list">{pairs.map((p) => <li key={p.a + p.b} style={{ gridTemplateColumns: "1fr" }}><span>{pairLine(p)}</span></li>)}</ul>

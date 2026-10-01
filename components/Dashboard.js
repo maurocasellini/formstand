@@ -245,7 +245,7 @@ export default function Dashboard({ demo = false }) {
         <div className="panel">
           <div className="panel-head"><h2>Datenherkunft</h2><span className="note">getrennt gespeichert</span></div>
           {orow("API", api, "var(--accent)", "Workouts und Tageswerte")}
-          {orow("Manuell", o.manual || 0, "var(--c-str)", "Gewicht, Trigger, Tests")}
+          {orow("Manuell", o.manual || 0, "var(--c-str)", "Gewicht, Einflussfaktoren, Tests")}
           {orow("Bilder & PDF", o.media || 0, "var(--s2)", "Fotos, InBody, Blutwerte")}
           <p className="note">Datensätze im Zeitraum. Rohdaten der Schnittstellen bleiben unverändert gespeichert.</p>
         </div>

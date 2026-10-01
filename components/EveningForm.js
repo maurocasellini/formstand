@@ -20,7 +20,7 @@ export default function EveningForm({ entries = {}, today, action, factors }) {
     <form action={formAction} className="stack eve">
       <fieldset disabled={ro} className="ro-fs stack">
         <div className="form">
-          <label className="f">Abend vom<DateField name="day" value={day} onChange={(v) => v && setDay(v)} max={today} required /></label>
+          <label className="f">Datum<DateField name="day" value={day} onChange={(v) => v && setDay(v)} max={today} required /></label>
           <div className="f"><span className="lbl">Alkohol (Gläser)</span>
             <div className="step">
               <button type="button" onClick={() => setAlc((a) => Math.max(0, a - 1))} aria-label="Ein Glas weniger">−</button>
@@ -29,14 +29,14 @@ export default function EveningForm({ entries = {}, today, action, factors }) {
             </div>
           </div>
         </div>
-        <div className="f"><span className="lbl">Weitere Faktoren an diesem Abend</span>
+        <div className="f"><span className="lbl">Weitere Einflussfaktoren</span>
           <div className="chips">{factors.map(([k, n]) => (
             <label key={k}><input type="checkbox" name="f" value={k} checked={sel.has(k)} onChange={() => toggle(k)} /><span>{n}</span></label>
           ))}</div>
         </div>
         <div className="btnrow">
-          <button className="btn" type="submit" disabled={pending || ro}>{pending ? "Speichert…" : has ? "Abend aktualisieren" : "Abend speichern"}</button>
-          {has && <span className="note">Für diesen Abend ist schon etwas gespeichert – Speichern ersetzt es.</span>}
+          <button className="btn" type="submit" disabled={pending || ro}>{pending ? "Speichert…" : has ? "Aktualisieren" : "Speichern"}</button>
+          {has && <span className="note">Für diesen Tag ist schon etwas gespeichert – Speichern ersetzt es.</span>}
         </div>
       </fieldset>
       {state?.error && <span className="notice crit">{state.error}</span>}
