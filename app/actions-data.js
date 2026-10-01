@@ -13,6 +13,7 @@ import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
 import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload } from "@/lib/ai";
 import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
+import { runBodyAnalysis } from "@/lib/bodyai";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
 import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS } from "@/lib/catalog";
@@ -82,7 +83,13 @@ export async function deleteManual(form) {
 export async function updateProfile(_prev, form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;
-  await repo.updateUser(subject.id, { sport: String(form.get("sport") || "").slice(0, 40) || null, weight_kg: numOf(form.get("weight_kg")), birth_year: numOf(form.get("birth_year")) });
+  // Nur Felder ändern, die das Formular mitschickt (Konto: Sportart/Jahrgang, Körper: Grösse)
+  const patch = {};
+  if (form.has("sport")) patch.sport = String(form.get("sport") || "").slice(0, 40) || null;
+  if (form.has("birth_year")) patch.birth_year = numOf(form.get("birth_year"));
+  if (form.has("weight_kg")) patch.weight_kg = numOf(form.get("weight_kg"));
+  if (form.has("height_cm")) { const h = numOf(form.get("height_cm")); if (h != null && (h < 120 || h > 230)) return { error: "Grösse in cm, z. B. 182." }; patch.height_cm = h; }
+  await repo.updateUser(subject.id, patch);
   revalidatePath("/", "layout");
   return { ok: "Profil gespeichert." };
 }
@@ -168,9 +175,33 @@ export async function uploadMedia(_prev, form) {
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
   }
+  // Neue Körperfotos: Körperanalyse im Hintergrund (nach der Antwort)
+  if (found.body_photo && ai) after(async () => { try { await runBodyAnalysis(subject.id, day); } catch {} });
   revalidatePath("/", "layout");
   const what = Object.entries(found).map(([k, n]) => `${n}× ${MEDIA_KINDS[k]}`).join(", ");
   return { ok: `Gespeichert: ${what}.${notes.length ? " " + notes.join(" · ") + "." : ""}${chosen === "auto" ? " Falsch erkannt? Bei der Datei die Art ändern." : ""}` };
+}
+
+// Körperanalyse auf Knopfdruck (neuester Fototag)
+export async function analyzeBodyAction(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
+  try { await runBodyAnalysis(subject.id, String(form.get("day") || "") || null); }
+  catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
+  revalidatePath("/", "layout");
+  return { ok: "Körperanalyse erstellt." };
+}
+// Vorgeschlagene Schwächen aus der Körperanalyse in die Ziele übernehmen (max. 4)
+export async function adoptWeaknesses(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const add = String(form.get("weak") || "").split(",").filter((w) => WEAKNESSES[w]);
+  if (!add.length) return { error: "Nichts zu übernehmen." };
+  let out = [];
+  await repo.updateGoals(subject.id, (g) => { out = [...new Set([...(g.weaknesses || []), ...add])].slice(0, 4); return { ...g, weaknesses: out, updated_at: new Date().toISOString() }; });
+  revalidatePath("/", "layout");
+  return { ok: `Übernommen – der Wochenplan berücksichtigt jetzt: ${out.map((w) => WEAKNESSES[w][0]).join(", ")}.` };
 }
 
 // Art oder Pose einer Datei korrigieren; wird sie zum InBody-Blatt, liest Formstand die Werte aus

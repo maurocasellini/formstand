@@ -3,6 +3,7 @@ import { pageContext } from "@/lib/subject";
 import QuickLinks from "@/components/QuickLinks";
 import { learnedText } from "@/lib/learn";
 import EveningForm from "@/components/EveningForm";
+import BodyAnalysis from "@/components/BodyAnalysis";
 import { eveningMap } from "@/lib/evening";
 import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
@@ -149,6 +150,9 @@ export default async function Heute({ demo } = {}) {
   const recP = Object.keys(T?.prov || {});
   const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
   const fresh = advice && decision && advice.decision_key === decision.key ? advice : null;
+  const bodyAna = Object.values(await repo.getBodyAnalyses(subject.id)).sort((a, b) => (a.day < b.day ? 1 : -1))[0] || null;
+  const hasBodyPhotos = !bodyAna && (await repo.getMedia(subject.id)).some((m) => m.kind === "body_photo");
+  const measuredBf = (() => { const b = manual.filter((m) => m.kind === "bodyfat").sort((a, b) => (a.day < b.day ? 1 : -1))[0]; return b ? Number(b.value) : null; })();
 
   // Mini-Verlauf 6 Wochen
   const W = 560, H = 200, L = 30, Rr = 10, Tp = 10, B = 22;
@@ -219,6 +223,13 @@ export default async function Heute({ demo } = {}) {
       )}
 
       {hasGoals && upcoming?.length > 0 && <Next items={upcoming} today={today} week={week} phase={phase} learned={learned} base={base} />}
+
+      {(bodyAna || hasBodyPhotos) && (
+        <section className="panel">
+          <div className="panel-head"><h2>Körper</h2><Link className="note" href={`${base}/bilder#analyse`}>{bodyAna ? "Ganze Analyse →" : "Zur Analyse →"}</Link></div>
+          {bodyAna ? <BodyAnalysis a={bodyAna} measured={measuredBf} compact /> : <p className="muted">Deine Körperfotos sind noch nicht ausgewertet. Unter Körper → Analyse schätzt die KI Körperfett, Stärken und Potenzial und schlägt den passenden Trainingsfokus vor.</p>}
+        </section>
+      )}
 
       {yesterday && (
         <section className={`panel yday y-${yesterday.status}`}>

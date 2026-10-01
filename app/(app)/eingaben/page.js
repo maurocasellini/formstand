@@ -52,22 +52,6 @@ export default async function Eingaben({ demo } = {}) {
         ))}</ul>}
       </section>
 
-      <section className="grid3">
-        <div className="panel">
-          <h2 id="gewicht">Gewicht &amp; Körperfett</h2>
-          <ActionForm action={addManual}>
-            <input type="hidden" name="kind" value="weight" />
-            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
-            <label className="f">Gewicht kg<input type="number" name="value" step="0.1" min="30" max="250" required /></label>
-          </ActionForm>
-          <ActionForm action={addManual}>
-            <input type="hidden" name="kind" value="bodyfat" />
-            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
-            <label className="f">Körperfett %<input type="number" name="value" step="0.1" min="3" max="60" required /></label>
-          </ActionForm>
-          <p className="note">InBody-Auswertung lieber unter „Körper“ hochladen – die Werte werden ausgelesen und das Original bleibt erhalten.</p>
-        </div>
-      </section>
 
       <section className="panel">
         <div className="panel-head"><h2 id="trigger">Einflussfaktoren</h2><span className="note">Alkohol und alles, was die Nacht beeinflussen kann – auch rückwirkend</span></div>

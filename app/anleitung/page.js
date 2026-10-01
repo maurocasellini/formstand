@@ -136,7 +136,7 @@ export default async function Anleitung() {
             <Step n="6" id="koerper" title="Tests, Profil und Körper" time="nach Bedarf">
               <div className="g-two">
                 <Sub title="Leistungstests"><p><b>Eingaben → Leistungstest:</b> FTP (z. B. Zwift Ramp Test), Schwellenpuls, CSS fürs Schwimmen. Daraus werden Watt-, Puls- und Pace-Vorgaben.</p></Sub>
-                <Sub title="Trainingsprofil"><p><b>Konto → Trainingsprofil:</b> Sportart, Gewicht und Jahrgang. Das Gewicht nimmt Formstand sonst automatisch aus Waage oder InBody.</p></Sub>
+                <Sub title="Gewicht & Profil"><p><b>Körper → Gewicht & Grösse:</b> Gewicht, Körperfett und Grösse (Waage und InBody kommen automatisch). <b>Konto → Trainingsprofil:</b> Sportart und Jahrgang.</p></Sub>
               </div>
               <Sub title="Körper">
                 <p>InBody-Auswertung (PDF oder Foto) und Körperfotos im selben Feld hochladen – Formstand erkennt selbst, was es ist, liest InBody-Werte aus und ordnet Fotos nach Pose. Unter <b>Körperentwicklung</b> stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich.</p>

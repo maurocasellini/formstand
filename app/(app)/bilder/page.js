@@ -4,7 +4,8 @@ import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
 import { MEDIA_KINDS } from "@/lib/catalog";
-import { uploadMedia, deleteMedia, rereadInBody, comparePhotos, changeMedia } from "../../actions-data";
+import { uploadMedia, deleteMedia, rereadInBody, comparePhotos, changeMedia, analyzeBodyAction, adoptWeaknesses, addManual, updateProfile } from "../../actions-data";
+import BodyAnalysis from "@/components/BodyAnalysis";
 import CompareSlider from "@/components/CompareSlider";
 import { filesReady } from "@/lib/files";
 import { aiReady } from "@/lib/ai";
@@ -73,6 +74,16 @@ export default async function Bilder({ searchParams, demo } = {}) {
   const days = A && B ? Math.round((new Date(B.day) - new Date(A.day)) / 864e5) : 0;
 
   const docs = media.filter((m) => !["body_photo", "inbody"].includes(m.kind));
+  // Körperanalyse: neuester Fototag; läuft nach dem Upload im Hintergrund
+  const analyses = await repo.getBodyAnalyses(subject.id);
+  const lastPhotoDay = photos.map((p) => p.day).sort().at(-1) || null;
+  const ana = Object.values(analyses).sort((a, b) => (a.day < b.day ? 1 : -1))[0] || null;
+  const pending = lastPhotoDay && (!ana || ana.day < lastPhotoDay) && photos.some((p) => p.day === lastPhotoDay && Date.now() - new Date(p.created_at).getTime() < 3 * 60e3);
+  const lastOf = (k) => manual.filter((m) => m.kind === k).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1))[0];
+  const wLast = lastOf("weight"), bfLast = lastOf("bodyfat");
+  const kgNow = wLast ? Number(wLast.value) : subject.weight_kg ?? null, cm = subject.height_cm ?? null;
+  const bmi = kgNow && cm ? Math.round((kgNow / (cm / 100) ** 2) * 10) / 10 : null;
+  const measuredBf = (() => { const b = manual.filter((m) => m.kind === "bodyfat").sort((a, b) => (a.day < b.day ? 1 : -1))[0]; return b ? Number(b.value) : null; })();
   const docGroups = ["blood", "meal", "other"].map((k) => [k, docs.filter((m) => m.kind === k)]).filter(([, l]) => l.length);
 
   return (
@@ -80,12 +91,12 @@ export default async function Bilder({ searchParams, demo } = {}) {
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Körper</h1><p>InBody-Messungen, Körperfotos und deine Entwicklung an einem Ort. Privat gespeichert, nur über dein Konto abrufbar.</p></div></div>
 
       <nav className="subnav" aria-label="Abschnitte">
-        {!ro && <a href="#hinzufuegen">Hinzufügen</a>}<a href="#verlauf">Entwicklung</a>{photos.length > 1 && <a href="#vergleich">Vorher / Nachher</a>}{docs.length > 0 && <a href="#dokumente">Dokumente</a>}
+        {!ro && <><a href="#hinzufuegen">Hochladen</a><a href="#messwerte">Gewicht & Grösse</a></>}{photos.length > 0 && <a href="#analyse">Analyse</a>}<a href="#verlauf">Entwicklung</a>{photos.length > 1 && <a href="#vergleich">Vorher / Nachher</a>}{docs.length > 0 && <a href="#dokumente">Dokumente</a>}
       </nav>
 
-      {!ro && (
-        <section className="panel">
-          <h2 id="hinzufuegen">Hinzufügen</h2>
+      {!ro && (<section className="grid2e">
+        <div className="panel">
+          <h2 id="hinzufuegen">Fotos & InBody hochladen</h2>
           {!filesReady && <div className="notice warn">Der Dateispeicher ist noch nicht verbunden.</div>}
           <ActionForm action={uploadMedia} submit="Hochladen" busy="Lädt und erkennt…">
             <FilePick name="file" accept="image/*,application/pdf" multiple hint="Foto, Screenshot oder PDF · max. 4 MB · bis 6 auf einmal" />
@@ -97,7 +108,41 @@ export default async function Bilder({ searchParams, demo } = {}) {
           <p className="note">{ai
             ? "Formstand erkennt selbst, was du hochlädst: Körperfoto (inkl. Front, Seite, Rücken), InBody- oder Waagen-Auswertung (Werte werden automatisch ausgelesen), Laborbefund oder Mahlzeit. Dafür wird die Datei kurz an Claude geschickt (ca. 0,2 Rappen). Wer das nicht will, wählt die Art selbst."
             : "Ohne KI wird ein Bild als Körperfoto abgelegt; die Art lässt sich wählen und später ändern."}</p>
-          <details className="note"><summary>Tipps für gute Körperfotos</summary>Alle 2–4 Wochen, morgens nüchtern, gleiches Licht, gleicher Abstand, Kamera auf Hüfthöhe, entspannt stehen. Front, Seite und Rücken. Gewicht ohne InBody trägst du unter <Link href={`${base}/eingaben#gewicht`}>Eingaben</Link> ein.</details>
+          <details className="note"><summary>Tipps für gute Körperfotos</summary>Alle 2–4 Wochen, morgens nüchtern, gleiches Licht, gleicher Abstand, Kamera auf Hüfthöhe, entspannt stehen. Front, Seite und Rücken. Gewicht ohne InBody trägst du rechts unter „Gewicht & Grösse“ ein.</details>
+        </div>
+        <div className="panel">
+          <h2 id="messwerte">Gewicht & Grösse</h2>
+          <div className="hl ctx">
+            <div className="hli"><span>Gewicht</span><b>{kgNow != null ? Number(kgNow).toFixed(1) : "–"}<small className="note"> kg</small></b><small className="note">{wLast ? `eingetragen ${fmt(wLast.day)}` : "aus Profil"}</small></div>
+            <div className="hli"><span>Grösse</span><b>{cm ?? "–"}<small className="note"> cm</small></b>{bmi && <small className="note">BMI {bmi}</small>}</div>
+            {bfLast && <div className="hli"><span>Körperfett</span><b>{Number(bfLast.value).toFixed(1)}<small className="note"> %</small></b><small className="note">{fmt(bfLast.day)}</small></div>}
+          </div>
+          <ActionForm action={addManual}>
+            <input type="hidden" name="kind" value="weight" />
+            <label className="f">Datum<DateField name="day" defaultValue={todayIso()} max={todayIso()} /></label>
+            <label className="f">Gewicht kg<input type="number" name="value" step="0.1" min="30" max="250" required /></label>
+          </ActionForm>
+          <ActionForm action={addManual}>
+            <input type="hidden" name="kind" value="bodyfat" />
+            <label className="f">Datum<DateField name="day" defaultValue={todayIso()} max={todayIso()} /></label>
+            <label className="f">Körperfett %<input type="number" name="value" step="0.1" min="3" max="60" required /></label>
+          </ActionForm>
+          <ActionForm action={updateProfile} reset={false}>
+            <label className="f">Grösse cm<input type="number" name="height_cm" min="120" max="230" defaultValue={cm ?? ""} placeholder="z. B. 182" /></label>
+          </ActionForm>
+          <p className="note">Waagenwerte über intervals.icu und InBody kommen automatisch dazu – hier nur, was sonst fehlt.</p>
+        </div>
+      </section>
+      )}
+
+      {photos.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2 id="analyse">Körperanalyse</h2><span className="note">aus deinen Fotos, Messwerten und Zielen</span></div>
+          {ana ? <BodyAnalysis a={ana} measured={measuredBf} ai={ai} ro={ro} analyze={analyzeBodyAction} adopt={adoptWeaknesses} base={base} />
+            : pending ? <div className="notice good">Analyse läuft – in etwa 30 Sekunden die Seite neu laden.</div>
+            : ai && !ro ? <ActionForm action={analyzeBodyAction} className="btnrow" submit="Körper jetzt analysieren" busy="Analysiert… (ca. 20 s)" reset={false}><span className="note">Die KI schätzt Körperfett, Stärken und Potenzial und schlägt den passenden Trainingsfokus vor (ca. 3–5 Rappen).</span></ActionForm>
+            : <p className="muted">Die Körperanalyse braucht die KI (Admin → Schnittstellen).</p>}
+          {ana && pending && <p className="note">Neue Fotos werden gerade analysiert – in etwa 30 Sekunden neu laden.</p>}
         </section>
       )}
 
