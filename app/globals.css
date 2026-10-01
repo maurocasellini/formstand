@@ -758,3 +758,10 @@ main h2[id],main details[id]{scroll-margin-top:120px}
   .fb-kpis>div{padding:8px 10px}
   .fb-kpis b{font-size:17px}
 }
+/* Entscheidung: Zusatzinfos einklappbar · Was ansteht */
+.adv-more{border-radius:12px;background:var(--sunk);padding:10px 14px}
+.adv-more>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--muted)}
+.adv-more[open]>summary{margin-bottom:8px}
+.ansteht-body{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.ansteht-body h3{text-transform:none;letter-spacing:0;font-size:15px;color:var(--fg)}
+.panel>.ansteht-body:first-child{border-top:0;padding-top:0}

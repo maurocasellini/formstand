@@ -78,6 +78,8 @@ function Decision({ d, a }) {
         {d.avoid.length > 0 && <div className="no"><dt>Nicht empfohlen</dt><dd>{d.avoid.join(" · ")}</dd></div>}
         {d.alt && <div><dt>Alternative</dt><dd><b>{d.alt.what}</b> · {d.alt.detail}</dd></div>}
         <div><dt>Warum</dt><dd><ul>{(a?.why?.length ? a.why : d.why).map((w, i) => <li key={i}>{w}</li>)}</ul></dd></div>
+      </dl>
+      <details className="adv-more"><summary>Ernährung, Erholung & morgen</summary><dl>
         <div><dt>Ernährung</dt><dd>{a?.nutrition || <>
           <b>ca. {fmtRange(range(n.kcal), " kcal")}</b> · ca. {fmtRange(range(n.carbs_g, 0.1, 10), " g")} Kohlenhydrate · {fmtRange(range(n.protein_g, 0.08, 5), " g")} Protein · {fmtRange(range(n.fat_g, 0.12, 5), " g")} Fett · {n.fluid_l} l trinken
           {n.note && <span className="nl">{n.note}</span>}
@@ -85,7 +87,7 @@ function Decision({ d, a }) {
         </>}</dd></div>
         {a?.recovery && <div><dt>Erholung</dt><dd>{a.recovery}</dd></div>}
         <div><dt>Morgen</dt><dd>{d.tomorrow}</dd></div>
-      </dl>
+      </dl></details>
       {a?.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
       <p className="note">Entscheidung nach festen Regeln aus deinen Daten · Datenqualität {d.quality}{a ? ` · erklärt von der KI um ${t}` : ""}. Ersetzt keine ärztliche Beratung.</p>
     </div>
@@ -94,7 +96,13 @@ function Decision({ d, a }) {
 
 // Wie bin ich drauf? Erholung (nur Messwerte der Nacht) · Bereitschaft (heute belastbar, inkl. Check-in) · fünf Bereiche
 const sg = (v, d = 0) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`;
-function Status({ T, st, cx, ls }) {
+function Status({ T, st, cx, ls, onlyLoads = false }) {
+  if (onlyLoads) return ls ? (
+    <div className="loads"><span className="lbl">Belastung 7 Tage vs. dein Schnitt</span>
+      {[["Herz-Kreislauf", ls.cardio], ["Beine", ls.muscle.legs], ["Oberkörper", ls.muscle.upper], ["Volumen", ls.hours, `${ls.hours.w7.toFixed(1)} h`]].filter(([, x]) => x.avg || x.w7).map(([n, x, extra]) => (
+        <span key={n} className={`ld ${x.ratio == null ? "" : x.ratio > 1.4 ? "hi" : x.ratio < 0.7 ? "lo" : ""}`} title={ratioWord(x.ratio)}><em>{n}</em>{extra ? `${extra} · ` : ""}{x.ratio == null ? "neu" : `${x.ratio.toFixed(1)}×`}</span>
+      ))}
+    </div>) : null;
   const m = Object.fromEntries((cx || []).map((x) => [x.k, x]));
   const S = st?.states;
   const parts = S ? [["Herz-Kreislauf", S.cardio.value], ["Beine", S.muscle.regions.legs.value], ["Oberkörper", S.muscle.regions.upper.value], ["Schlaf", S.sleep.value], ["Stress & Energie", S.stress.value]] : [];
@@ -117,24 +125,31 @@ function Status({ T, st, cx, ls }) {
       <div className="parts">{parts.map(([n, v]) => (
         <div key={n} className="drv"><span>{n}</span><div className="meter m2"><i style={{ width: `${v ?? 0}%`, background: `var(--${stateColor(v)})` }} /></div><span className="num" style={{ textAlign: "right", fontWeight: 600 }} title={v == null ? "keine Daten von heute" : undefined}>{v ?? "–"}</span></div>
       ))}</div>
-      {ls && (
-        <div className="loads"><span className="lbl">Belastung 7 Tage vs. dein Schnitt</span>
-          {[["Herz-Kreislauf", ls.cardio], ["Beine", ls.muscle.legs], ["Oberkörper", ls.muscle.upper], ["Volumen", ls.hours, `${ls.hours.w7.toFixed(1)} h`]].filter(([, x]) => x.avg || x.w7).map(([n, x, extra]) => (
-            <span key={n} className={`ld ${x.ratio == null ? "" : x.ratio > 1.4 ? "hi" : x.ratio < 0.7 ? "lo" : ""}`} title={ratioWord(x.ratio)}><em>{n}</em>{extra ? `${extra} · ` : ""}{x.ratio == null ? "neu" : `${x.ratio.toFixed(1)}×`}</span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
+// Beispiel-Wochenbrief für die Demo (dort schreibt die KI nicht)
+const DEMO_BRIEF = (today) => ({
+  titel: "Gute Form – jetzt die Schwelle schärfen",
+  absaetze: [
+    "Du bist in einer stabilen Aufbauphase: Seit über einem halben Jahr trainierst du jede Woche regelmässig, deine Fitness ist in den letzten vier Wochen weiter gestiegen und die Bereitschaft liegt heute klar über deinem Schnitt. Die Grundlage für den Alpen-Radmarathon steht.",
+    "Im Training setzt du den Plan gut um. Was fehlt, sind die Einheiten an der Schwelle: Von den geplanten Fokus-Einheiten hast du nur etwa die Hälfte gemacht – genau dort entscheidet sich, ob du die langen Anstiege im Renntempo halten kannst.",
+    "Erholung und Schlaf sind solide. Der Bremsklotz der letzten zwei Wochen war der Alkohol: Bei dir kostet ein Abend im Schnitt rund 8 % HRV am nächsten Morgen, und an diesen Tagen fielen die harten Einheiten kürzer aus.",
+    "Dein VO2max ist für dein Alter überragend. Gewichtsmässig bewegst du dich leicht weg vom Ziel – kein Drama, aber an lockeren Tagen etwas weniger Kohlenhydrate am Abend hilft.",
+  ],
+  fokus: ["Die Schwelleneinheit am Donnerstag komplett durchziehen", "Höchstens ein Abend mit Alkohol – und nicht vor einem harten Tag", "Am Sonntag auf der langen Ausfahrt die Verpflegung im Renntempo üben"],
+  ausblick: "Bis zum Radmarathon bleiben rund neun Wochen: Jetzt zählt, die Schwelle zweimal pro Woche zu treffen, dann folgt das Tapering.",
+  created_at: today + "T06:00:00Z", week: today,
+});
+
 // Was kommt als Nächstes? Die nächsten Tage aus dem (adaptiven) Plan, nächster Wettkampf, was Formstand gelernt hat
 const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-function Next({ items, today, week, phase, learned, base }) {
+function Next({ items, today, week, phase, learned, base, children }) {
   const moved = (week || []).filter((x) => x.movedTo || x.dropped).filter((x) => x.day >= today);
   return (
     <section className="panel">
-      <div className="panel-head"><h2>Als Nächstes</h2><Link className="note" href={`${base}/ziele#plan`}>Wochenplan →</Link></div>
+      <div className="panel-head"><h2 id="ansteht">Was ansteht</h2><Link className="note" href={`${base}/ziele#plan`}>Wochenplan →</Link></div>
       <div className="nextd">{items.map((x) => (
         <div key={x.day} className={`nd t-${x.type}`}>
           <span className="note">{WD[new Date(x.day + "T12:00:00Z").getUTCDay()]} {x.day.slice(8, 10)}.{x.day.slice(5, 7)}.</span>
@@ -145,6 +160,7 @@ function Next({ items, today, week, phase, learned, base }) {
       {moved.map((x) => <p key={x.day} className="note">{x.dropped ? `„${x.title}“ passt diese Woche nicht mehr mit genug Erholung hinein und fällt weg.` : `„${x.title}“ ist auf ${WD[new Date(x.movedTo + "T12:00:00Z").getUTCDay()]} verschoben.`}</p>)}
       {phase?.event && phase.daysTo > 0 && <p className="note"><b>{phase.label}</b> · noch {phase.daysTo} Tage bis {phase.event.name}</p>}
       {learned?.n >= 8 && <p className="note">{learnedText(learned)}</p>}
+      {children}
     </section>
   );
 }
@@ -208,7 +224,7 @@ export default async function Heute({ demo } = {}) {
 
       {hasAny && (
         <nav className="subnav jump" aria-label="Auf dieser Seite">
-          <a href="#drauf">Heute</a><a href="#rueckblick">Rückblick</a><a href="#auffaellig">Was auffällt</a>{!viewer.demo && <a href="#coach">Wochenbrief</a>}<a href="#trends">Trends</a>{ws && <a href="#woche">Woche</a>}{tg.length > 0 && <a href="#ziele">Ziele</a>}<a href="#faktoren">Einflussfaktoren</a>
+          <a href="#drauf">Heute</a><a href="#coach">Wochenbrief</a><a href="#rueckblick">Rückblick</a><a href="#auffaellig">Was auffällt</a><a href="#trends">Trends</a>{ws && <a href="#woche">Woche</a>}{tg.length > 0 && <a href="#ziele">Ziele</a>}<a href="#faktoren">Einflussfaktoren</a>
         </nav>
       )}
 
@@ -237,10 +253,11 @@ export default async function Heute({ demo } = {}) {
             <Status T={T} st={st} cx={ctxv} ls={loadSplit(all)} />
             {st && (
             <div className="why">
-              <p><span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span> · {st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
-              {st.drivers.length > 0 && <p><b>Haupttreiber:</b> {st.drivers.join(" · ")}</p>}
-              <p><b>Limiter:</b> {st.limiter ? `${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : "keiner"}</p>
-              <details><summary>Alle Faktoren</summary>
+              <p><b>Limiter:</b> {st.limiter ? `${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : "keiner"} · <span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span></p>
+              <details><summary>Belastung, Treiber & alle Faktoren</summary>
+                {(() => { const ls = loadSplit(all); return ls ? <Status T={T} st={null} cx={[]} ls={ls} onlyLoads /> : null; })()}
+                <p>{st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
+                {st.drivers.length > 0 && <p><b>Haupttreiber:</b> {st.drivers.join(" · ")}</p>}
                 {Object.entries(st.states).map(([k, x]) => <div key={k} className="fx"><b>{STATE_NAMES[k]}</b>{x.drivers.length ? x.drivers.map((d, i) => <span key={i} className={d.z > 0.3 ? "up" : d.z < -0.3 ? "down" : ""}>{d.t}</span>) : <span className="note">keine Daten</span>}</div>)}
                 {T?.scoreObj != null && ck && <p className="note">Messwerte allein: {T.scoreObj}/100. Dein Check-in zählt zu einem Viertel mit.</p>}
               </details>
@@ -255,6 +272,13 @@ export default async function Heute({ demo } = {}) {
             <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
+        </section>
+      )}
+
+      {hasAny && (
+        <section className="panel">
+          <div className="panel-head"><h2 id="coach">Dein Coach · Wochenbrief</h2><span className="note">{viewer.demo ? "Beispiel – so sieht dein Brief aus" : "alles zusammen, in Worten – jeden Montag neu"}</span></div>
+          <Brief b={viewer.demo ? DEMO_BRIEF(today) : brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} />
         </section>
       )}
 
@@ -273,13 +297,6 @@ export default async function Heute({ demo } = {}) {
           <div className="finds">{fnd.slice(0, 6).map((f) => (
             <div key={f.title} className={`find ${f.tone}`}><b>{f.title}</b><p>{f.text}</p></div>
           ))}</div>
-        </section>
-      )}
-
-      {hasAny && !viewer.demo && (
-        <section className="panel">
-          <div className="panel-head"><h2 id="coach">Dein Coach · Wochenbrief</h2><span className="note">alles zusammen, in Worten – jeden Montag neu</span></div>
-          <Brief b={brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} />
         </section>
       )}
 
@@ -322,14 +339,16 @@ export default async function Heute({ demo } = {}) {
         <div className="notice">Noch keine messbaren Ziele. <Link href={`${base}/ziele#meineziele`}>Ziel setzen →</Link> – z. B. 5 kg weniger bis Juni oder Kniebeuge 120 kg. Plan, Ernährung und Empfehlungen richten sich dann danach.</div>
       )}
 
-      {hasGoals && upcoming?.length > 0 && <Next items={upcoming} today={today} week={week} phase={phase} learned={learned} base={base} />}
-
-      {(bodyAna || hasBodyPhotos) && (
-        <section className="panel">
-          <div className="panel-head"><h2>Körper</h2><Link className="note" href={`${base}/bilder#analyse`}>{bodyAna ? "Ganze Analyse →" : "Zur Analyse →"}</Link></div>
-          {bodyAna ? <BodyAnalysis a={bodyAna} measured={measuredBf} compact /> : <p className="muted">Deine Körperfotos sind noch nicht ausgewertet. Unter Körper → Analyse schätzt die KI Körperfett, Stärken und Potenzial und schlägt den passenden Trainingsfokus vor.</p>}
-        </section>
-      )}
+      {(() => {
+        const body = (bodyAna || hasBodyPhotos) ? (
+          <div className="ansteht-body">
+            <div className="panel-head"><h3>Körper</h3><Link className="note" href={`${base}/bilder#analyse`}>{bodyAna ? "Ganze Analyse →" : "Zur Analyse →"}</Link></div>
+            {bodyAna ? <BodyAnalysis a={bodyAna} measured={measuredBf} compact /> : <p className="muted">Deine Körperfotos sind noch nicht ausgewertet. Unter Körper → Analyse schätzt die KI Körperfett, Stärken und Potenzial und schlägt den passenden Trainingsfokus vor.</p>}
+          </div>
+        ) : null;
+        if (hasGoals && upcoming?.length > 0) return <Next items={upcoming} today={today} week={week} phase={phase} learned={learned} base={base}>{body}</Next>;
+        return body ? <section className="panel">{body}</section> : null;
+      })()}
 
       {yesterday && (
         <section className={`panel yday y-${yesterday.status}`}>
