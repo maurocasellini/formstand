@@ -36,7 +36,7 @@ export default async function Konto({ searchParams }) {
       {!me.demo && (
         <section className="panel">
           <h2>Morgen-Erinnerung</h2>
-          <p className="muted">Jeden Morgen um ca. 07:00 eine Nachricht mit deiner Tagesform und dem Check-in (4 Fragen, 5 Sekunden). Pro Gerät einschalten, z. B. auf dem Handy.</p>
+          <p className="muted">Jeden Morgen um ca. 07:00 eine Nachricht mit deiner Bereitschaft und dem Check-in (4 Fragen, 5 Sekunden). Pro Gerät einschalten, z. B. auf dem Handy.</p>
           {pub ? <PushToggle publicKey={pub} save={savePushSub} remove={deletePushSub} test={testPush} /> : <p className="notice warn">Erinnerungen sind gerade nicht verfügbar ({pushError}).</p>}
         </section>
       )}

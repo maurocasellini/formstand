@@ -66,7 +66,7 @@ export default async function Anleitung() {
           <h3>b) Uhr und Apps mit intervals.icu verbinden</h3>
           <ol>
             <li>In intervals.icu links auf <b>Einstellungen</b> (Settings) gehen.</li>
-            <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben. Wichtig: auch die <b>Wellness-Daten</b> (Schlaf, HFV/HRV, Ruhe-HF) erlauben, sonst fehlt die Tagesform.</li>
+            <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben. Wichtig: auch die <b>Wellness-Daten</b> (Schlaf, HFV/HRV, Ruhe-HF) erlauben, sonst fehlt die Bereitschaft.</li>
             <li>Gleich dort kannst du alles weitere anhängen, das du nutzt: <b>WHOOP, Polar, Oura, Zwift, Wahoo, COROS, Suunto</b> … Formstand bekommt dann alles gesammelt über intervals.icu. intervals.icu ist damit deine Hauptquelle.</li>
             <li><b>Strava in intervals.icu bringt Formstand nichts:</b> Einheiten, die nur über Strava kommen, darf intervals.icu nicht weitergeben. Darum Uhr und Zwift direkt verbinden. Für ältere Strava-Einheiten gibt es in intervals.icu „Import All Strava Data“ – danach sind sie auch für Formstand da.</li>
           </ol>
@@ -151,7 +151,7 @@ export default async function Anleitung() {
           <h2>Häufige Fragen</h2>
           <dl className="faq">
             <dt>intervals.icu lässt sich nicht verbinden</dt><dd>Athleten-ID mit „i“ am Anfang eingeben, API-Schlüssel ohne Leerzeichen kopieren. Notfalls in intervals.icu einen neuen Schlüssel erzeugen.</dd>
-            <dt>Workouts sind da, aber keine Tagesform/HRV</dt><dd>In intervals.icu bei der Garmin-Verbindung die Wellness-Daten erlauben. Die Uhr nachts tragen; Garmin braucht für den HRV-Status rund drei Wochen.</dd>
+            <dt>Workouts sind da, aber keine Bereitschaft/HRV</dt><dd>In intervals.icu bei der Garmin-Verbindung die Wellness-Daten erlauben. Die Uhr nachts tragen; Garmin braucht für den HRV-Status rund drei Wochen.</dd>
             <dt>Die Werte von heute fehlen</dt><dd>Garmin-App öffnen und synchronisieren, kurz warten, dann in Formstand unter Quellen „Jetzt abgleichen“.</dd>
             <dt>Keine Mitteilungen auf dem iPhone</dt><dd>Formstand muss als Symbol auf dem Home-Bildschirm installiert und von dort geöffnet sein (iOS 16.4 oder neuer). In den iPhone-Einstellungen Mitteilungen für Formstand erlauben.</dd>
             <dt>Wer sieht meine Daten?</dt><dd>Nur du, der Admin und ein Coach, dem du zugeordnet bist. Zugangsdaten zu anderen Diensten werden verschlüsselt gespeichert. Verbindungen kannst du unter Quellen jederzeit trennen.</dd>

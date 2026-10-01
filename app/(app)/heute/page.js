@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { pageContext } from "@/lib/subject";
 import QuickLinks from "@/components/QuickLinks";
+import { learnedText } from "@/lib/learn";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
-import { TRIGGERS, triggerName, WEAKNESSES } from "@/lib/catalog";
+import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
 import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
@@ -65,7 +66,7 @@ function Decision({ d, a }) {
         {d.alt && <div><dt>Alternative</dt><dd><b>{d.alt.what}</b> · {d.alt.detail}</dd></div>}
         <div><dt>Warum</dt><dd><ul>{(a?.why?.length ? a.why : d.why).map((w, i) => <li key={i}>{w}</li>)}</ul></dd></div>
         <div><dt>Ernährung</dt><dd>{a?.nutrition || <>
-          <b>{n.kcal} kcal</b> · {n.carbs_g} g Kohlenhydrate ({n.carbs_gkg} g/kg) · {n.protein_g} g Protein · {n.fat_g} g Fett · {n.fluid_l} l trinken
+          <b>ca. {fmtRange(range(n.kcal), " kcal")}</b> · ca. {fmtRange(range(n.carbs_g, 0.1, 10), " g")} Kohlenhydrate · {fmtRange(range(n.protein_g, 0.08, 5), " g")} Protein · {fmtRange(range(n.fat_g, 0.12, 5), " g")} Fett · {n.fluid_l} l trinken
           {n.note && <span className="nl">{n.note}</span>}
           {[n.pre, n.during, n.post].filter(Boolean).map((x, i) => <span key={i} className="nl">{x}</span>)}
         </>}</dd></div>
@@ -78,59 +79,55 @@ function Decision({ d, a }) {
   );
 }
 
-// Oben auf einen Blick: Erholung & Schlaf · Trainingsbereitschaft · Fokus heute
+// Wie bin ich drauf? Erholung (nur Messwerte der Nacht) · Bereitschaft (heute belastbar, inkl. Check-in) · fünf Bereiche
 const sg = (v, d = 0) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`;
-function Glance({ T, st, cx, decision, advice, base }) {
+function Status({ T, st, cx }) {
   const m = Object.fromEntries((cx || []).map((x) => [x.k, x]));
-  const sl = st?.states?.sleep, cardio = st?.states?.cardio;
-  const whoop = T?.prov?.whoop?.recovery;
+  const S = st?.states;
+  const parts = S ? [["Herz-Kreislauf", S.cardio.value], ["Beine", S.muscle.regions.legs.value], ["Oberkörper", S.muscle.regions.upper.value], ["Schlaf", S.sleep.value], ["Stress & Energie", S.stress.value]] : [];
   const night = [
-    m.sleep && `Schlaf ${m.sleep.value} h${m.sleep.base != null ? ` (${sg((m.sleep.value - m.sleep.base) * 60)} min vs. Ø)` : ""}`,
+    m.sleep && `Schlaf ${m.sleep.value} h${m.sleep.base != null ? ` (${sg((m.sleep.value - m.sleep.base) * 60)} min)` : ""}`,
     m.hrv && `HRV ${m.hrv.value} ms${m.hrv.delta != null ? ` (${sg(m.hrv.delta)} %)` : ""}`,
     m.rhr && `Ruhepuls ${m.rhr.value}${m.rhr.base != null ? ` (${sg(m.rhr.value - m.rhr.base)})` : ""}`,
-    m.sleepScore && `Sleep Score ${m.sleepScore.value}`,
-    whoop != null && `WHOOP Recovery ${Math.round(whoop)} %`,
   ].filter(Boolean);
-  const recVal = sl?.value ?? cardio?.value ?? null;
-  const ready = T?.score ?? null;
-  const focusWhy = st?.limiter ? `Limiter: ${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : decision?.why?.[0];
   return (
-    <section className="glance">
-      <div className={`gl ${stateOf(recVal)}`}>
-        <span className="gl-k">Erholung & Schlaf</span>
-        {night.length ? <>
-          <b className="gl-v">{recVal ?? "–"}<small>/100</small></b>
-          <ul>{night.slice(0, 4).map((t) => <li key={t}>{t}</li>)}</ul>
-        </> : <>
-          <b className="gl-v muted">keine Nachtdaten</b>
-          <p className="note">HRV, Ruhepuls und Schlaf von heute fehlen. Garmin-App öffnen und synchronisieren; in intervals.icu bei Garmin die Wellness-Daten erlauben. <Link href={base ? "/register" : "/quellen"}>Quellen →</Link></p>
-        </>}
+    <div className="stat">
+      <div className="stat-big">
+        <div className={`sb ${stateOf(T?.scoreObj)}`}><span>Erholung</span><b>{T?.scoreObj ?? "–"}</b><small>{T?.scoreObj == null ? "keine Nachtdaten" : "Messwerte der Nacht"}</small></div>
+        <div className={`sb ${stateOf(T?.score)}`}><span>Bereitschaft</span><b>{T?.score ?? "–"}</b><small className={`pill ${stateOf(T?.score)}`}>{stateText(T?.score)}</small></div>
       </div>
-      <div className={`gl ${stateOf(ready)}`}>
-        <span className="gl-k">Trainingsbereitschaft</span>
-        <b className="gl-v">{ready ?? "–"}<small>/100</small></b>
-        <span className={`pill ${stateOf(ready)}`}>{stateText(ready)}</span>
-        {st && <p className="note">{st.limiter ? `Bremst: ${st.limiter.name}` : "Kein Bereich bremst"} · Datenqualität {st.quality.level}</p>}
-      </div>
-      <a className={`gl focus ${decision?.state || ""}`} href="#entscheidung">
-        <span className="gl-k">Fokus heute</span>
-        {decision ? <>
-          {(() => {
-            const t = advice?.headline || decision.title.replace(/^Heute: /, "");
-            const sub = [t.toLowerCase().includes(String(decision.main.what).toLowerCase()) ? null : decision.main.what, decision.main.min ? `${decision.main.min} min` : null, decision.planned?.focus ? `Fokus ${WEAKNESSES[decision.planned.focus]?.[0] || ""}` : null].filter(Boolean).join(" · ");
-            return <><b className="gl-t">{t}</b>{sub && <span className="gl-m">{sub}</span>}</>;
-          })()}
-          {focusWhy && <p className="note">{focusWhy}</p>}
-          <span className="gl-more">Details ↓</span>
-        </> : <p className="note">Kurz einchecken – dann steht hier, worauf es heute ankommt.</p>}
-      </a>
+      {night.length ? <p className="note">{night.join(" · ")} · vs. dein Ø</p> : <p className="note">HRV, Ruhepuls und Schlaf von heute fehlen – Garmin-App synchronisieren; in intervals.icu die Wellness-Daten erlauben.</p>}
+      <div className="parts">{parts.map(([n, v]) => (
+        <div key={n} className="drv"><span>{n}</span><div className="meter m2"><i style={{ width: `${v ?? 0}%`, background: `var(--${stateColor(v)})` }} /></div><span className="num" style={{ textAlign: "right", fontWeight: 600 }}>{v ?? "–"}</span></div>
+      ))}</div>
+    </div>
+  );
+}
+
+// Was kommt als Nächstes? Die nächsten Tage aus dem (adaptiven) Plan, nächster Wettkampf, was Formstand gelernt hat
+const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+function Next({ items, today, week, phase, learned, base }) {
+  const moved = (week || []).filter((x) => x.movedTo || x.dropped).filter((x) => x.day >= today);
+  return (
+    <section className="panel">
+      <div className="panel-head"><h2>Als Nächstes</h2><Link className="note" href={`${base}/ziele#plan`}>Wochenplan →</Link></div>
+      <div className="nextd">{items.map((x) => (
+        <div key={x.day} className={`nd t-${x.type}`}>
+          <span className="note">{WD[new Date(x.day + "T12:00:00Z").getUTCDay()]} {x.day.slice(8, 10)}.{x.day.slice(5, 7)}.</span>
+          <b>{x.title}</b>
+          <span className="note">{x.min ? `${x.min} min` : "frei"}{x.moved ? " · nachgeholt" : ""}{x.second ? ` + ${x.second.title}` : ""}</span>
+        </div>
+      ))}</div>
+      {moved.map((x) => <p key={x.day} className="note">{x.dropped ? `„${x.title}“ passt diese Woche nicht mehr mit genug Erholung hinein und fällt weg.` : `„${x.title}“ ist auf ${WD[new Date(x.movedTo + "T12:00:00Z").getUTCDay()]} verschoben.`}</p>)}
+      {phase?.event && phase.daysTo > 0 && <p className="note"><b>{phase.label}</b> · noch {phase.daysTo} Tage bis {phase.event.name}</p>}
+      {learned?.n >= 8 && <p className="note">{learnedText(learned)}</p>}
     </section>
   );
 }
 
 export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
-  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual } = await todayModel(subject.id);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming } = await todayModel(subject.id);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
   const ck = T?.checkin || null;
@@ -165,9 +162,93 @@ export default async function Heute({ demo } = {}) {
         </div>
       </div>
 
-      {hasAny && <Glance T={T} st={st} cx={ctxv} decision={decision} advice={fresh} base={base} />}
+      {!hasAny && (
+        <div className="panel">
+          <h2>Noch keine Daten</h2>
+          <p className="muted">Verbinde intervals.icu, Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
+          <div className="btnrow">
+            <Link className="btn" href={base ? "/register" : "/quellen"}>Quellen verbinden</Link>
+            {!base && <Link className="btn ghost" href="/anleitung#garmin">Schritt-für-Schritt-Anleitung</Link>}
+            <form action={loadDemo}><button className="btn ghost" type="submit">Beispieldaten laden</button></form>
+          </div>
+        </div>
+      )}
+      {!ck && (hasAny || !viewer.demo) && (
+        <section className="panel ckpanel" id="checkin">
+          <div className="panel-head"><h2>Guten Morgen! Wie fühlst du dich?</h2><span className="note">5 Sekunden · macht Bereitschaft und Empfehlung deutlich genauer</span></div>
+          <CheckinForm ck={null} />
+        </section>
+      )}
 
-      <QuickLinks base={base} demo={Boolean(viewer.demo)} />
+      {hasAny && (
+        <section className="home2">
+          <div className="panel status">
+            <div className="panel-head"><h2>Wie bin ich drauf?</h2><span className="note">{recP.length ? `aus ${recP.map((p) => PNAME[p] || p).join(" + ")}` : ""}{ck ? " · mit Check-in" : ""}</span></div>
+            <Status T={T} st={st} cx={ctxv} />
+            {st && (
+            <div className="why">
+              <p><span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span> · {st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
+              {st.drivers.length > 0 && <p><b>Haupttreiber:</b> {st.drivers.join(" · ")}</p>}
+              <p><b>Limiter:</b> {st.limiter ? `${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : "keiner"}</p>
+              <details><summary>Alle Faktoren</summary>
+                {Object.entries(st.states).map(([k, x]) => <div key={k} className="fx"><b>{STATE_NAMES[k]}</b>{x.drivers.length ? x.drivers.map((d, i) => <span key={i} className={d.z > 0.3 ? "up" : d.z < -0.3 ? "down" : ""}>{d.t}</span>) : <span className="note">keine Daten</span>}</div>)}
+                {T?.scoreObj != null && ck && <p className="note">Messwerte allein: {T.scoreObj}/100. Dein Check-in zählt zu einem Viertel mit.</p>}
+              </details>
+              {ck && <details id="checkin"><summary>Check-in von heute ändern</summary><CheckinForm ck={ck} /></details>}
+            </div>
+          )}
+          </div>
+        <div className="panel" id="entscheidung">
+          <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
+          {decision ? <Decision d={decision} a={fresh} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
+          {viewer.demo || !decision ? null : ai ? (
+            <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
+          ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
+        </div>
+        </section>
+      )}
+
+      {hasGoals && upcoming?.length > 0 && <Next items={upcoming} today={today} week={week} phase={phase} learned={learned} base={base} />}
+
+      {yesterday && (
+        <section className={`panel yday y-${yesterday.status}`}>
+          <span className="note">Gestern</span>
+          <span>Empfohlen: <b>{yesterday.rec.title}</b></span>
+          <span>Gemacht: <b>{ACT_LABEL[yesterday.act.kind]}</b>{yesterday.act.min ? ` · ${yesterday.act.min} min` : ""}</span>
+          <span className={`tag ${{ gefolgt: "on", teilweise: "wait", anders: "err", ausgelassen: "" }[yesterday.status]}`}>{{ gefolgt: "✓ gefolgt", teilweise: "~ teilweise", anders: "↑ härter als empfohlen", ausgelassen: "– ausgelassen" }[yesterday.status]}</span>
+          {yesterday.scoreThen != null && yesterday.scoreNow != null && <span className="note">Bereitschaft {yesterday.scoreThen} → {yesterday.scoreNow} ({yesterday.scoreNow - yesterday.scoreThen >= 0 ? "+" : ""}{yesterday.scoreNow - yesterday.scoreThen})</span>}
+          <Link href={`${base}/ziele`} className="note">Verlauf →</Link>
+        </section>
+      )}
+      {unrated.length > 0 && !viewer.demo && (
+        <section className="panel">
+          <div className="panel-head"><h2>Wie hart war's?</h2><span className="note">Ein Tipp pro Einheit. Damit kann Formstand Kraft und Ausdauer fair vergleichen.</span></div>
+          <div className="rate">{unrated.map((a) => (
+            <ActionForm key={a.feelKey} action={rateSession} className="rate-row" submit="OK" busy="…">
+              <input type="hidden" name="key" value={a.feelKey} /><input type="hidden" name="day" value={a.day} />
+              <span><b>{a.name || a.sport}</b> <span className="note">{a.day.slice(8, 10)}.{a.day.slice(5, 7)}. · {Math.round(a.duration_s / 60)} min</span></span>
+              <select name="rpe" defaultValue="" required><option value="" disabled>Anstrengung 1–10</option>{RPE.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}</select>
+              {a.category === "str" && <select name="region" defaultValue="full"><option value="full">Ganzkörper</option><option value="legs">Beine</option><option value="upper">Oberkörper</option></select>}
+            </ActionForm>
+          ))}</div>
+        </section>
+      )}
+
+      <section className="panel">
+          <div className="panel-head"><h2>Trigger heute</h2><span className="note">wirken auf morgen früh</span></div>
+          <ActionForm action={addManual} submit="Eintragen">
+            <input type="hidden" name="kind" value="trigger" />
+            <input type="hidden" name="day" value={today} />
+            <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
+            <label className="f">Menge (z. B. Gläser)<input type="number" name="value" min="1" max="20" step="1" defaultValue="1" /></label>
+          </ActionForm>
+          <ul className="list">
+            {todayTrig.length ? todayTrig.map((t) => (
+              <li key={t.id}><span className="tag wait">heute</span><span>{triggerName(t.data?.t)}{t.data?.t === "alkohol" ? ` · ${Number(t.value)} Gl.` : ""}{(() => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? <small className="note" style={{ display: "block" }}>Erfahrungsgemäss morgen HRV {r.metrics.hrv.diff > 0 ? "+" : "−"}{Math.abs(Math.round(r.metrics.hrv.diff))} %{r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}</small> : null; })()}</span>
+                <form action={deleteManual}><input type="hidden" name="id" value={t.id} /><button className="x" type="submit" aria-label="Entfernen">✕</button></form></li>
+            )) : <li style={{ gridTemplateColumns: "1fr" }}><span className="muted">Heute noch nichts eingetragen.</span></li>}
+          </ul>
+      </section>
 
       {!viewer.demo && subject.id === viewer.id && (() => {
         const steps = [
@@ -191,86 +272,8 @@ export default async function Heute({ demo } = {}) {
         );
       })()}
 
-      {!hasAny && (
-        <div className="panel">
-          <h2>Noch keine Daten</h2>
-          <p className="muted">Verbinde intervals.icu, Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
-          <div className="btnrow">
-            <Link className="btn" href={base ? "/register" : "/quellen"}>Quellen verbinden</Link>
-            {!base && <Link className="btn ghost" href="/anleitung#garmin">Schritt-für-Schritt-Anleitung</Link>}
-            <form action={loadDemo}><button className="btn ghost" type="submit">Beispieldaten laden</button></form>
-          </div>
-        </div>
-      )}
-
-      {!ck && (hasAny || !viewer.demo) && (
-        <section className="panel ckpanel" id="checkin">
-          <div className="panel-head"><h2>Guten Morgen! Wie fühlst du dich?</h2><span className="note">5 Sekunden · macht Tagesform und Empfehlung deutlich genauer</span></div>
-          <CheckinForm ck={null} />
-        </section>
-      )}
-
-      <section className="grid2">
-        <div className="panel">
-          <div className="panel-head"><h2>Tagesform</h2><span className="note">bereinigt aus {recP.length ? recP.map((p) => PNAME[p] || p).join(" + ") : "–"}</span></div>
-          <div className="ready">
-            <Dial s={T?.score ?? null} delta={T?.score != null && Y?.score != null ? T.score - Y.score : null} />
-            <div className="drivers">
-              <span className={`pill ${stateOf(T?.score)}`}>{stateText(T?.score)}</span>
-              {st && Object.entries(st.states).map(([k, x]) => (
-                <div className="drv" key={k}><span>{STATE_NAMES[k]}{k === "muscle" && x.limiter && x.value < 70 ? <small className="note"> · {REGIONS[x.limiter]}</small> : null}</span>
-                  <div className="meter m2"><i style={{ width: `${x.value ?? 0}%`, background: `var(--${stateColor(x.value)})` }} /></div>
-                  <span className="num" style={{ textAlign: "right", fontWeight: 600 }}>{x.value ?? "–"}</span></div>
-              ))}
-            </div>
-          </div>
-          {st && (
-            <div className="why">
-              <p><span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span> · {st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
-              {st.drivers.length > 0 && <p><b>Haupttreiber:</b> {st.drivers.join(" · ")}</p>}
-              <p><b>Limiter:</b> {st.limiter ? `${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : "keiner"}</p>
-              <details><summary>Alle Faktoren</summary>
-                {Object.entries(st.states).map(([k, x]) => <div key={k} className="fx"><b>{STATE_NAMES[k]}</b>{x.drivers.length ? x.drivers.map((d, i) => <span key={i} className={d.z > 0.3 ? "up" : d.z < -0.3 ? "down" : ""}>{d.t}</span>) : <span className="note">keine Daten</span>}</div>)}
-                {T?.scoreObj != null && ck && <p className="note">Messwerte allein: {T.scoreObj}/100. Dein Check-in zählt zu einem Viertel mit.</p>}
-              </details>
-              {ck && <details id="checkin"><summary>Check-in von heute ändern</summary><CheckinForm ck={ck} /></details>}
-            </div>
-          )}
-        </div>
-        <div className="panel" id="entscheidung">
-          <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
-          {decision ? <Decision d={decision} a={fresh} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
-          {viewer.demo || !decision ? null : ai ? (
-            <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
-          ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
-        </div>
-      </section>
-
-      {yesterday && (
-        <section className={`panel yday y-${yesterday.status}`}>
-          <span className="note">Gestern</span>
-          <span>Empfohlen: <b>{yesterday.rec.title}</b></span>
-          <span>Gemacht: <b>{ACT_LABEL[yesterday.act.kind]}</b>{yesterday.act.min ? ` · ${yesterday.act.min} min` : ""}</span>
-          <span className={`tag ${{ gefolgt: "on", teilweise: "wait", anders: "err", ausgelassen: "" }[yesterday.status]}`}>{{ gefolgt: "✓ gefolgt", teilweise: "~ teilweise", anders: "↑ härter als empfohlen", ausgelassen: "– ausgelassen" }[yesterday.status]}</span>
-          {yesterday.scoreThen != null && yesterday.scoreNow != null && <span className="note">Tagesform {yesterday.scoreThen} → {yesterday.scoreNow} ({yesterday.scoreNow - yesterday.scoreThen >= 0 ? "+" : ""}{yesterday.scoreNow - yesterday.scoreThen})</span>}
-          <Link href={`${base}/ziele`} className="note">Verlauf →</Link>
-        </section>
-      )}
-
-      {unrated.length > 0 && !viewer.demo && (
-        <section className="panel">
-          <div className="panel-head"><h2>Wie hart war's?</h2><span className="note">Ein Tipp pro Einheit. Damit kann Formstand Kraft und Ausdauer fair vergleichen.</span></div>
-          <div className="rate">{unrated.map((a) => (
-            <ActionForm key={a.feelKey} action={rateSession} className="rate-row" submit="OK" busy="…">
-              <input type="hidden" name="key" value={a.feelKey} /><input type="hidden" name="day" value={a.day} />
-              <span><b>{a.name || a.sport}</b> <span className="note">{a.day.slice(8, 10)}.{a.day.slice(5, 7)}. · {Math.round(a.duration_s / 60)} min</span></span>
-              <select name="rpe" defaultValue="" required><option value="" disabled>Anstrengung 1–10</option>{RPE.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}</select>
-              {a.category === "str" && <select name="region" defaultValue="full"><option value="full">Ganzkörper</option><option value="legs">Beine</option><option value="upper">Oberkörper</option></select>}
-            </ActionForm>
-          ))}</div>
-        </section>
-      )}
-
+      <details className="panel more-data">
+        <summary><h2>Mehr Daten von heute</h2><span className="note">Werte im Kontext, Nacht, Verlauf, Einheiten, Quellen</span></summary>
       {ctxv.length > 0 && (
         <section className="panel">
           <div className="panel-head"><h2>Deine Werte im Kontext</h2><span className="note">verglichen mit dir selbst: Ø der letzten 28 Tage und Rang in 12 Monaten</span></div>
@@ -286,21 +289,6 @@ export default async function Heute({ demo } = {}) {
           </div>
         </section>
       )}
-
-      {recP.length > 0 && (
-        <section className="panel">
-          <div className="panel-head"><h2>Quellenabgleich heute</h2><span className="note">Jedes Gerät misst anders. Gerechnet wird mit „Bereinigt“.</span></div>
-          <div className="tbl-wrap"><table>
-            <thead><tr><th>Kennzahl</th>{recP.map((p) => <th key={p} className="r">{PNAME[p] || p}</th>)}<th className="r">Bereinigt</th></tr></thead>
-            <tbody>
-              {[["Recovery", "recovery", r0, "", T.score], ["HRV", "hrv", r0, " ms", T.hrv], ["Ruhepuls", "rhr", r0, " bpm", T.rhr], ["Schlaf", "sleep", r1, " h", T.sleep]].map(([lbl, k, f, u, clean]) => (
-                <tr key={k}><td>{lbl}</td>{recP.map((p) => <td key={p} className="r num">{T.prov[p][k] == null ? "–" : f(T.prov[p][k]) + u}</td>)}<td className="r num clean">{clean == null ? "–" : f(clean) + u}</td></tr>
-              ))}
-            </tbody>
-          </table></div>
-        </section>
-      )}
-
       {T && [T.sleepScore, T.bbHigh, T.stress, T.spo2, T.resp, T.readiness, T.vo2max, T.deep].some((v) => v != null) && (
         <section className="panel">
           <div className="panel-head"><h2>Weitere Details letzte Nacht</h2><span className="note">Schlafphasen und Zusatzwerte</span></div>
@@ -320,36 +308,19 @@ export default async function Heute({ demo } = {}) {
           })()}
         </section>
       )}
-
-      <section className="grid2">
+      <section className="grid2e">
         <div className="panel chart">
-          <div className="panel-head"><h2>Letzte 6 Wochen</h2><span className="note">Linie = Tagesform · Balken = Last</span></div>
-          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Tagesform und Last der letzten 6 Wochen">
+          <div className="panel-head"><h2>Letzte 6 Wochen</h2><span className="note">Linie = Bereitschaft · Balken = Last</span></div>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Bereitschaft und Last der letzten 6 Wochen">
             {[0, 33, 67, 100].map((g) => <g key={g}><line x1={L} x2={W - Rr} y1={yS(g)} y2={yS(g)} stroke="var(--line)" /><text x={L - 6} y={yS(g) + 3} textAnchor="end">{g}</text></g>)}
             {days.map((d, i) => d.load > 0 && <rect key={d.day} x={x(i) - 3} y={yL(d.load)} width="6" height={H - B - yL(d.load)} rx="2" fill={d.str > d.end ? "var(--c-str)" : "var(--c-end)"} opacity=".35" />)}
             {path && <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinejoin="round" />}
             {days.map((d, i) => (d.night || []).some((t) => t.t === "alkohol") && <path key={"a" + i} d={`M${x(i)},${H - B + 4} l4,7 h-8z`} fill="var(--warn)" />)}
             {days.map((d, i) => (i % 7 === 0 || i === days.length - 1) && <text key={"t" + i} x={x(i)} y={H - 2} textAnchor="middle">{d.day.slice(8, 10)}.{d.day.slice(5, 7)}.</text>)}
           </svg>
-          <div className="legend"><span><i style={{ background: "var(--accent)" }} />Tagesform</span><span><i style={{ background: "var(--c-end)", height: 8 }} />Ausdauer</span><span><i style={{ background: "var(--c-str)", height: 8 }} />Kraft</span><span><i style={{ background: "var(--warn)", width: 8, height: 8, clipPath: "polygon(50% 0,100% 100%,0 100%)" }} />Alkohol am Vorabend</span></div>
-        </div>
-        <div className="panel">
-          <div className="panel-head"><h2>Trigger heute</h2><span className="note">wirken auf morgen früh</span></div>
-          <ActionForm action={addManual} submit="Eintragen">
-            <input type="hidden" name="kind" value="trigger" />
-            <input type="hidden" name="day" value={today} />
-            <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
-            <label className="f">Menge (z. B. Gläser)<input type="number" name="value" min="1" max="20" step="1" defaultValue="1" /></label>
-          </ActionForm>
-          <ul className="list">
-            {todayTrig.length ? todayTrig.map((t) => (
-              <li key={t.id}><span className="tag wait">heute</span><span>{triggerName(t.data?.t)}{t.data?.t === "alkohol" ? ` · ${Number(t.value)} Gl.` : ""}{(() => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? <small className="note" style={{ display: "block" }}>Erfahrungsgemäss morgen HRV {r.metrics.hrv.diff > 0 ? "+" : "−"}{Math.abs(Math.round(r.metrics.hrv.diff))} %{r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}</small> : null; })()}</span>
-                <form action={deleteManual}><input type="hidden" name="id" value={t.id} /><button className="x" type="submit" aria-label="Entfernen">✕</button></form></li>
-            )) : <li style={{ gridTemplateColumns: "1fr" }}><span className="muted">Heute noch nichts eingetragen.</span></li>}
-          </ul>
+          <div className="legend"><span><i style={{ background: "var(--accent)" }} />Bereitschaft</span><span><i style={{ background: "var(--c-end)", height: 8 }} />Ausdauer</span><span><i style={{ background: "var(--c-str)", height: 8 }} />Kraft</span><span><i style={{ background: "var(--warn)", width: 8, height: 8, clipPath: "polygon(50% 0,100% 100%,0 100%)" }} />Alkohol am Vorabend</span></div>
         </div>
       </section>
-
       <section className="panel">
         <div className="panel-head"><h2>Letzte Einheiten</h2><span className="note">Duplikate aus mehreren Quellen zusammengeführt</span></div>
         {activities.length ? (
@@ -368,6 +339,25 @@ export default async function Heute({ demo } = {}) {
               </tr>))}</tbody>
           </table></div>
         ) : <div className="empty">Noch keine Workouts.</div>}
+      </section>
+      {recP.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Quellenabgleich heute</h2><span className="note">Jedes Gerät misst anders. Gerechnet wird mit „Bereinigt“.</span></div>
+          <div className="tbl-wrap"><table>
+            <thead><tr><th>Kennzahl</th>{recP.map((p) => <th key={p} className="r">{PNAME[p] || p}</th>)}<th className="r">Bereinigt</th></tr></thead>
+            <tbody>
+              {[["Recovery", "recovery", r0, "", T.score], ["HRV", "hrv", r0, " ms", T.hrv], ["Ruhepuls", "rhr", r0, " bpm", T.rhr], ["Schlaf", "sleep", r1, " h", T.sleep]].map(([lbl, k, f, u, clean]) => (
+                <tr key={k}><td>{lbl}</td>{recP.map((p) => <td key={p} className="r num">{T.prov[p][k] == null ? "–" : f(T.prov[p][k]) + u}</td>)}<td className="r num clean">{clean == null ? "–" : f(clean) + u}</td></tr>
+              ))}
+            </tbody>
+          </table></div>
+        </section>
+      )}
+      </details>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Weitere Bereiche</h2></div>
+        <QuickLinks base={base} demo={Boolean(viewer.demo)} />
       </section>
     </>
   );

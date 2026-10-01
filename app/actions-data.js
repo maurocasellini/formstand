@@ -218,7 +218,7 @@ export async function saveCheckin(_prev, form) {
     try { if (await aiReady()) await makeAdvice(subject.id); } catch {}
   });
   revalidatePath("/", "layout");
-  return { ok: "Danke! Tagesform und Empfehlung sind aktualisiert." };
+  return { ok: "Danke! Bereitschaft und Empfehlung sind aktualisiert." };
 }
 
 // ---------- Gefühl nach der Einheit ----------

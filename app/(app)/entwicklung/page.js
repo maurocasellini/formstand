@@ -48,7 +48,7 @@ export default async function Entwicklung({ demo } = {}) {
         ) : <div className="empty">Für Trends braucht es gut 4 Monate Daten.</div>}
         {(sum.adherence != null || trig.length > 0) && (
           <div className="learn">
-            {sum.adherence != null && <p><b>Plan-Treue 4 Wochen: {sum.adherence} %</b>{sum.followedNext != null ? ` · Wenn du der Empfehlung gefolgt bist, war die Tagesform am Folgetag im Schnitt ${Math.abs(Math.round(sum.followedNext - sum.otherNext))} ${Math.abs(Math.round(sum.followedNext - sum.otherNext)) === 1 ? "Punkt" : "Punkte"} ${sum.followedNext >= sum.otherNext ? "höher" : "tiefer"}.` : ""} <Link href={`${base}/ziele`}>Details</Link></p>}
+            {sum.adherence != null && <p><b>Plan-Treue 4 Wochen: {sum.adherence} %</b>{sum.followedNext != null ? ` · Wenn du der Empfehlung gefolgt bist, war die Bereitschaft am Folgetag im Schnitt ${Math.abs(Math.round(sum.followedNext - sum.otherNext))} ${Math.abs(Math.round(sum.followedNext - sum.otherNext)) === 1 ? "Punkt" : "Punkte"} ${sum.followedNext >= sum.otherNext ? "höher" : "tiefer"}.` : ""} <Link href={`${base}/ziele`}>Details</Link></p>}
             {trig.map((t) => <p key={t}>{t}</p>)}
           </div>
         )}

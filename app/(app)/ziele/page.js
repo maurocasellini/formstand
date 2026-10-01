@@ -7,7 +7,7 @@ import { changes } from "@/lib/insights";
 import { bodyProgress } from "@/lib/body";
 import { periodReview, reviewText } from "@/lib/weekly";
 import * as repo from "@/lib/repo";
-import { FOCUS, EVENT_TYPES, WEAKNESSES } from "@/lib/catalog";
+import { FOCUS, EVENT_TYPES, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
 import { saveGoals, addEvent, deleteEvent, savePlanDay, deleteFixed, findEvent } from "../../actions-data";
 import EventFinder from "@/components/EventFinder";
 import DayEditor from "@/components/DayEditor";
@@ -28,7 +28,9 @@ export default async function Ziele({ searchParams, demo } = {}) {
   const m = await todayModel(subject.id);
   const { goals, today, all, zones, decision, phase } = m;
   const week = sp?.w === "1" ? 1 : 0;
-  const plan = weekPlan(goals, addD(mondayOf(today), 7 * week), m.user || {}, zones);
+  const plan0 = weekPlan(goals, addD(mondayOf(today), 7 * week), m.user || {}, zones);
+  // Diese Woche adaptiv: verpasste oder heute gestrichene harte Einheiten sind bereits verschoben
+  const plan = week === 0 && m.week ? { ...plan0, items: m.week } : plan0;
   const rowsAll = review(all, { ...m.ctx, goals: m.hasGoals ? goals : null }, 62);
   const rows = rowsAll.slice(-28);
   const sum = summarize(rows);
@@ -79,6 +81,9 @@ export default async function Ziele({ searchParams, demo } = {}) {
                 {changed && <span className="adj">Heute angepasst: {decision.title}</span>}
                 {x.custom && <span className="mine">{x.recurring ? "Fester Termin" : "Von dir angepasst"}</span>}
                 {x.capped != null && <span className="mine">Nur {x.capped} min Zeit</span>}
+                {x.moved && <span className="adj">Nachgeholt von {DAYS[(new Date(x.moved + "T12:00:00Z").getUTCDay() + 6) % 7]}</span>}
+                {x.movedTo && <span className="adj">Verschoben auf {DAYS[(new Date(x.movedTo + "T12:00:00Z").getUTCDay() + 6) % 7]}</span>}
+                {x.dropped && <span className="mine">Fällt diese Woche weg – kein Platz mit genug Erholung</span>}
                 {!ro && x.day >= today && x.type !== "race" && <DayEditor item={x} label={`${DAYNAMES[x.dow]}, ${short(x.day)}`} action={savePlanDay} autoOpen={sp?.d === x.day || (sp?.d === "today" && isToday)}
                   others={plan.items.filter((o) => o.day >= today && o.day !== x.day && o.type !== "race").map((o) => ({ day: o.day, label: `${DAYNAMES[o.dow]} ${short(o.day)}`, title: o.title }))} />}
               </div>
@@ -153,7 +158,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
                 <span><em>{p.quality}×</em>hart · {p.strength}× Kraft</span>
                 <span><em>{p.adherence ?? "–"} %</em>Plan-Treue</span>
                 <span><em>{p.focus}/{p.focusPlan}</em>Fokus-Einheiten</span>
-                <span><em>{p.score != null ? Math.round(p.score) : "–"}</em>Ø Tagesform</span>
+                <span><em>{p.score != null ? Math.round(p.score) : "–"}</em>Ø Bereitschaft</span>
                 <span><em>{p.alc}</em>Alkohol-Abende</span>
               </div>
               {p.off.length > 0 && <p className="note">Härter als empfohlen: {p.off.map((o) => `${short(o.day)} (${o.rec} → ${o.did})`).join(", ")}</p>}
@@ -169,7 +174,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
               <div className="hli"><span>Trend 4 Wochen</span><b>{body.slope != null ? `${body.slope > 0 ? "+" : ""}${body.slope}` : "–"}<small className="note"> kg/Woche</small></b>{body.pct != null && <small className="note">{body.pct > 0 ? "+" : ""}{body.pct} % pro Woche</small>}</div>
               {body.eta && <div className="hli"><span>Ziel erreicht etwa</span><b>{fmt(body.eta)}</b><small className="note">in ~{body.weeks} Wochen beim jetzigen Tempo</small></div>}
               {body.bfNow != null && <div className="hli"><span>Körperfett</span><b>{body.bfNow}<small className="note"> %</small></b>{goals.targetBodyfat && <small className="note">Ziel {goals.targetBodyfat} %</small>}</div>}
-              {decision?.nutrition && <div className="hli"><span>Heute essen</span><b>{decision.nutrition.kcal}<small className="note"> kcal</small></b><small className="note">{decision.nutrition.protein_g} g Protein · {decision.nutrition.carbs_g} g KH · {decision.nutrition.fat_g} g Fett</small></div>}
+              {decision?.nutrition && <div className="hli"><span>Heute essen</span><b>{fmtRange(range(decision.nutrition.kcal))}<small className="note"> kcal</small></b><small className="note">{decision.nutrition.protein_g} g Protein · {decision.nutrition.carbs_g} g KH · {decision.nutrition.fat_g} g Fett</small></div>}
             </div>
             {body.warnings.map((w) => <div key={w} className="notice warn" style={{ marginTop: 8 }}>{w}</div>)}
             {decision?.nutrition?.note && <p className="note">{decision.nutrition.note}</p>}
@@ -202,12 +207,12 @@ export default async function Ziele({ searchParams, demo } = {}) {
         <div className="panel-head"><h2>Hat es funktioniert?</h2><span className="note">Empfehlung vs. tatsächliches Training · letzte {sum.n} Tage</span></div>
         <div className="hl ctx">
           <div className="hli"><span>Plan-Treue</span><b>{sum.adherence ?? "–"}<small className="note"> %</small></b><small className="note">gefolgt = 1, teilweise = ½</small></div>
-          {sum.followedNext != null && <div className="hli"><span>Tagesform am Folgetag</span><b>{Math.round(sum.followedNext)}<small className="note"> vs. {Math.round(sum.otherNext)}</small></b><em className={sum.followedNext >= sum.otherNext ? "up" : "down"}>{sum.followedNext >= sum.otherNext ? "+" : ""}{Math.round(sum.followedNext - sum.otherNext)} Pkt., wenn du der Empfehlung gefolgt bist</em></div>}
-          {sum.harderDelta != null && <div className="hli"><span>Härter als empfohlen</span><b>{sum.harderDelta > 0 ? "+" : ""}{Math.round(sum.harderDelta)}<small className="note"> Pkt.</small></b><small className="note">Tagesform am Morgen danach ({sum.nH}×)</small></div>}
+          {sum.followedNext != null && <div className="hli"><span>Bereitschaft am Folgetag</span><b>{Math.round(sum.followedNext)}<small className="note"> vs. {Math.round(sum.otherNext)}</small></b><em className={sum.followedNext >= sum.otherNext ? "up" : "down"}>{sum.followedNext >= sum.otherNext ? "+" : ""}{Math.round(sum.followedNext - sum.otherNext)} Pkt., wenn du der Empfehlung gefolgt bist</em></div>}
+          {sum.harderDelta != null && <div className="hli"><span>Härter als empfohlen</span><b>{sum.harderDelta > 0 ? "+" : ""}{Math.round(sum.harderDelta)}<small className="note"> Pkt.</small></b><small className="note">Bereitschaft am Morgen danach ({sum.nH}×)</small></div>}
         </div>
         {rows.length ? (
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Tag</th><th>Empfohlen</th><th>Gemacht</th><th>Status</th><th className="r">Tagesform danach</th></tr></thead>
+            <thead><tr><th>Tag</th><th>Empfohlen</th><th>Gemacht</th><th>Status</th><th className="r">Bereitschaft danach</th></tr></thead>
             <tbody>{rows.slice(-14).reverse().map((r) => (
               <tr key={r.day}>
                 <td className="num">{short(r.day)}</td>

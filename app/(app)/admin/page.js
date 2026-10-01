@@ -90,7 +90,7 @@ export default async function Admin() {
 
       <section className="panel">
         <div className="panel-head"><h2>Leute einladen</h2><span className="note">per WhatsApp, Mail oder Slack verschicken</span></div>
-        <CopyBox text={`Hoi! Ich nutze Formstand für Training und Erholung – Tagesform aus Garmin/WHOOP, Trainingsplan auf deine Wettkämpfe und Schwächen, alles an einem Ort.
+        <CopyBox text={`Hoi! Ich nutze Formstand für Training und Erholung – Bereitschaft aus Garmin/WHOOP, Trainingsplan auf deine Wettkämpfe und Schwächen, alles an einem Ort.
 
 1) Erst mal reinschauen (ohne Konto): ${base}/demo
 2) Konto anlegen: ${base}/register

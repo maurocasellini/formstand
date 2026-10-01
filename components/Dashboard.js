@@ -144,7 +144,7 @@ export default function Dashboard({ demo = false }) {
 
   // Werte
   const SB = buckets(days, days.length <= 31 ? "tag" : "woche");
-  const metrics = [["Ø Tagesform", "score", (v) => Math.round(v), "/100", true, true, "var(--accent)"], ["Ø HRV", "hrv", (v) => Math.round(v), " ms", true, false, "var(--good)"],
+  const metrics = [["Ø Bereitschaft", "score", (v) => Math.round(v), "/100", true, true, "var(--accent)"], ["Ø HRV", "hrv", (v) => Math.round(v), " ms", true, false, "var(--good)"],
     ["Ø Ruhepuls", "rhr", (v) => Math.round(v), " bpm", false, false, "var(--crit)"], ["Ø Schlaf", "sleep", (v) => v.toFixed(1), " h", true, true, "var(--s3)"],
     ["Gewicht", "weight", (v) => v.toFixed(1), " kg", false, true, "var(--s1)"], ["Fitness (CTL)", "ctl", (v) => Math.round(v), "", true, false, "var(--c-end)"],
     ["Ø Sleep Score", "sleepScore", (v) => Math.round(v), "/100", true, true, "var(--s2)"], ["Ø Body Battery max", "bbHigh", (v) => Math.round(v), "", true, true, "var(--good)"],
@@ -166,7 +166,7 @@ export default function Dashboard({ demo = false }) {
     let fill = "var(--sunk)", op = 1, tip = "";
     const l = p.end + p.str;
     if (heat === "load") { if (l > 0) { fill = p.str > p.end ? "var(--c-str)" : "var(--c-end)"; op = 0.18 + 0.82 * Math.min(1, l / mx); } tip = `Last ${l}`; }
-    else if (heat === "score") { if (p.score != null) { fill = `var(--${stateOf(p.score)})`; op = 0.25 + (0.75 * Math.abs(p.score - 50)) / 50; } tip = p.score != null ? `Tagesform ${p.score}` : "keine Daten"; }
+    else if (heat === "score") { if (p.score != null) { fill = `var(--${stateOf(p.score)})`; op = 0.25 + (0.75 * Math.abs(p.score - 50)) / 50; } tip = p.score != null ? `Bereitschaft ${p.score}` : "keine Daten"; }
     else if (heat === "sleep") { if (p.sleep != null) { fill = "var(--s3)"; op = Math.max(0.08, Math.min(1, (p.sleep - 5) / 3.5)); } tip = p.sleep != null ? `Schlaf ${p.sleep.toFixed(1)} h` : "keine Daten"; }
     else { if (p.alc > 0) { fill = "var(--warn)"; op = 0.3 + 0.7 * Math.min(1, p.alc / 4); tip = `Vorabend ${p.alc} Gläser`; } else tip = "kein Alkohol"; }
     const inR = p.day >= from && p.day <= to;
@@ -191,13 +191,13 @@ export default function Dashboard({ demo = false }) {
         <K l="Einheiten" v={C.n} u=""><Delta c={C.n} p={P?.n} /></K>
         <K l="Trainingslast" v={Math.round(train).toLocaleString("de-CH")} u=""><Delta c={train} p={P ? P.end + P.str : null} /></K>
         <K l="Kraft-Anteil" v={Math.round(strShare)} u="%"><Delta c={strShare} p={pStr} abs unit=" Pkt." /></K>
-        <K l="Ø Tagesform" v={C.score == null ? "–" : Math.round(C.score)} u="/100"><Delta c={C.score} p={P?.score} abs unit=" Pkt." /></K>
+        <K l="Ø Bereitschaft" v={C.score == null ? "–" : Math.round(C.score)} u="/100"><Delta c={C.score} p={P?.score} abs unit=" Pkt." /></K>
         <K l="Alkohol-Abende" v={C.alc} u=""><Delta c={C.alc} p={P?.alc} up={false} /></K>
       </div>
       <div className="panel chart">
-        <div className="panel-head"><h2>Belastung nach Art</h2><span className="note">Balken = Trainingslast · Linie = Ø Tagesform</span></div>
+        <div className="panel-head"><h2>Belastung nach Art</h2><span className="note">Balken = Trainingslast · Linie = Ø Bereitschaft</span></div>
         <Svg html={s} />
-        <div className="legend"><span><i style={{ background: "var(--c-end)", height: 8 }} />Ausdauer</span><span><i style={{ background: "var(--c-str)", height: 8 }} />Kraft</span><span><i style={{ background: "var(--c-day)", height: 8 }} />Alltag</span><span><i style={{ background: "var(--fg)" }} />Ø Tagesform</span></div>
+        <div className="legend"><span><i style={{ background: "var(--c-end)", height: 8 }} />Ausdauer</span><span><i style={{ background: "var(--c-str)", height: 8 }} />Kraft</span><span><i style={{ background: "var(--c-day)", height: 8 }} />Alltag</span><span><i style={{ background: "var(--fg)" }} />Ø Bereitschaft</span></div>
       </div>
       <div className="grid2e">
         <div className="panel">
@@ -213,7 +213,7 @@ export default function Dashboard({ demo = false }) {
           <div className="hl">
             <div className="hli"><span>Stärkste Woche</span><b>{Math.round(bestW.end + bestW.str)} Last</b><small>{bestW.label} · ab {fmtD(bestW.start)}</small></div>
             <div className="hli"><span>Längste Einheit</span><b>{Math.floor(longest.min / 60)} h {pad(longest.min % 60)}</b><small>{fmtF(longest.day)}</small></div>
-            <div className="hli"><span>Beste Tagesform</span><b>{best ? `${best.score}/100` : "–"}</b><small>{best ? fmtF(best.day) : "keine Recovery-Daten"}</small></div>
+            <div className="hli"><span>Beste Bereitschaft</span><b>{best ? `${best.score}/100` : "–"}</b><small>{best ? fmtF(best.day) : "keine Recovery-Daten"}</small></div>
             <div className="hli"><span>Ohne Alkohol</span><b>{maxRun} Tage</b><small>längste Serie</small></div>
             <div className="hli"><span>Fitness (CTL)</span><b>{Math.round(first?.ctl || 0)} → {Math.round(C.ctl)}</b><small>{first?.ctl ? `${C.ctl >= first.ctl ? "+" : ""}${Math.round((C.ctl / first.ctl - 1) * 100)} % im Zeitraum` : ""}</small></div>
             <div className="hli"><span>FTP</span><b>{ftps.length ? `${Number(ftps[ftps.length - 1].value)} W` : "–"}</b><small>{ftps.length > 1 ? `${Number(ftps[ftps.length - 1].value) - Number(ftps[0].value) >= 0 ? "+" : ""}${Number(ftps[ftps.length - 1].value) - Number(ftps[0].value)} W seit ${fmtD(ftps[0].day)}` : ftps.length ? `Test vom ${fmtD(ftps[0].day)}` : "kein Test im Zeitraum"}</small></div>
@@ -250,7 +250,7 @@ export default function Dashboard({ demo = false }) {
           <p className="note">Datensätze im Zeitraum. Rohdaten der Schnittstellen bleiben unverändert gespeichert.</p>
         </div>
         <div className="panel chart">
-          <div className="panel-head"><h2>Jahr auf einen Blick</h2><Seg small value={heat} onChange={setHeat} options={[["load", "Last"], ["score", "Tagesform"], ["sleep", "Schlaf"], ["alc", "Alkohol"]]} /></div>
+          <div className="panel-head"><h2>Jahr auf einen Blick</h2><Seg small value={heat} onChange={setHeat} options={[["load", "Last"], ["score", "Bereitschaft"], ["sleep", "Schlaf"], ["alc", "Alkohol"]]} /></div>
           <div className="tbl-wrap heat"><Svg html={hm} /></div>
           <p className="note">Hell = ausserhalb des gewählten Zeitraums.</p>
         </div>

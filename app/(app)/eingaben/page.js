@@ -5,7 +5,7 @@ import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
 import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout } from "../../actions-data";
 import { INBODY_FIELDS } from "@/lib/ai";
-import { analyzeTriggers } from "@/lib/triggers";
+import { analyzeTriggers, analyzePairs, pairLine } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
 
 const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Trigger", test: "Leistungstest", note: "Notiz" };
@@ -25,6 +25,7 @@ export default async function Eingaben({ demo } = {}) {
   // Persönliche Trigger-Auswertung (12 Monate)
   const { all, activities } = await buildSeries(subject.id, addDays(today, -364), today);
   const trig = analyzeTriggers(all, activities);
+  const pairs = analyzePairs(all, activities).filter((p) => p.stronger || p.weaker);
 
   return (
     <>
@@ -82,21 +83,25 @@ export default async function Eingaben({ demo } = {}) {
       </section>
 
       <section className="panel">
-        <div className="panel-head"><h2>Deine Trigger · was sie bei dir bewirken</h2><span className="note">Morgen danach vs. Morgen ohne Trigger am gleichen Wochentag · 12 Monate</span></div>
+        <div className="panel-head"><h2>Deine Reaktion nach …</h2><span className="note">Morgen danach vs. vergleichbare Morgen ohne diesen Faktor (gleicher Wochentag) · 12 Monate</span></div>
         {trig.length ? <div className="trig">{trig.map((r) => {
           const M = r.metrics, f = (m, dec = 0, unit = "") => (m?.diff == null || m.n < 3 ? null : `${m.diff > 0 ? "+" : "−"}${Math.abs(m.diff).toFixed(dec)}${unit}`);
-          const rows = [["HRV", f(M.hrv, 0, " %"), M.hrv, 1], ["Ruhepuls", f(M.rhr, 1, " bpm"), M.rhr, -1], ["Sleep Score", f(M.sleepScore, 0, " Pkt."), M.sleepScore, 1], ["Schlaf", f(M.sleep, 0, " min"), M.sleep, 1], ["Tagesform", f(M.score, 0, " Pkt."), M.score, 1]].filter((x) => x[1]);
+          const rows = [["HRV", f(M.hrv, 0, " %"), M.hrv, 1], ["Ruhepuls", f(M.rhr, 1, " bpm"), M.rhr, -1], ["Sleep Score", f(M.sleepScore, 0, " Pkt."), M.sleepScore, 1], ["Schlaf", f(M.sleep, 0, " min"), M.sleep, 1], ["Bereitschaft", f(M.score, 0, " Pkt."), M.score, 1]].filter((x) => x[1]);
           return (
             <div key={r.k} className={`card tcard lv-${r.level.replace(/ /g, "-")}`}>
-              <div className="t">{r.name}<span className="tag">{r.count}×</span></div>
+              <div className="t">{r.name}<span className="tag">{r.derived ? "automatisch · " : ""}{r.count}×</span></div>
               {rows.length ? <ul>{rows.map(([n, v, m, dir]) => <li key={n}><span>{n}</span><b className={m.level === "kein klarer Effekt" ? "" : dir * m.diff < 0 ? "down" : "up"}>{v}</b></li>)}</ul> : <p>Noch keine Recovery-Daten zu diesen Abenden.</p>}
               {r.recovery != null && r.recovery >= 0.3 && (r.level === "ziemlich sicher" || r.level === "Tendenz") && <p>Erholung: HRV im Schnitt nach <b>{r.recovery.toFixed(1)} Tagen</b> wieder normal ({r.recoveryN} Fälle)</p>}
               {M.hrv?.doseLo != null && M.hrv?.doseHi != null && <p>Dosis: 1–2 Gl. HRV {M.hrv.doseLo > 0 ? "+" : "−"}{Math.abs(Math.round(M.hrv.doseLo))} % · 3+ Gl. {M.hrv.doseHi > 0 ? "+" : "−"}{Math.abs(Math.round(M.hrv.doseHi))} %</p>}
               <p className="lv">{r.level}</p>
             </div>
           );
-        })}</div> : <div className="empty">Noch keine Trigger eingetragen. Trage z. B. Alkohol am Abend ein, nach einigen Wochen siehst du hier, was er bei dir bewirkt.</div>}
-        <p className="note">„Ziemlich sicher“ heisst: deutlicher Effekt über viele Abende. „Tendenz“: Richtung erkennbar, aber noch unsicher. „Training spät abends“ erkennt Formstand automatisch (Start nach 19 Uhr).</p>
+        })}</div> : <div className="empty">Noch keine Faktoren eingetragen. Trage z. B. Alkohol, spätes Essen oder Mobility am Abend ein – nach einigen Wochen siehst du hier deine Reaktion am Morgen danach.</div>}
+        {pairs.length > 0 && (<>
+          <h3>Kombinationen</h3>
+          <ul className="list">{pairs.map((p) => <li key={p.a + p.b} style={{ gridTemplateColumns: "1fr" }}><span>{pairLine(p)}</span></li>)}</ul>
+        </>)}
+        <p className="note">Das sind Zusammenhänge in deinen eigenen Daten, keine Beweise für Ursache und Wirkung. „Ziemlich sicher“: deutlicher Unterschied über viele Abende. „Tendenz“: Richtung erkennbar, aber noch unsicher. „Training spät abends“ (Start nach 19 Uhr) und „Harte Einheit“ erkennt Formstand automatisch. Positive Faktoren wie Mobility, Meditation oder Massage lassen sich genauso eintragen.</p>
       </section>
 
       <section className="grid2e">
@@ -128,7 +133,10 @@ export default async function Eingaben({ demo } = {}) {
               {SWIM_ZONES.map(([n, a, b]) => { const c = Number(css.value); return <tr key={n}><td>{n}</td><td className="r num">{a == null ? `schneller als ${pace(c + b)}` : b == null ? `langsamer als ${pace(c + a)}` : `${pace(c + a)}–${pace(c + b)}`}</td></tr>; })}
             </tbody></table></div>
           )}
-          {ftp && <p className="note">Nächster FTP-Test fällig: {fmt(addDays(ftp.day, 7 * (TEST_TYPES[ftp.data.test]?.wks || 8)))}</p>}
+          {[["FTP", ftp, "W"], ["Schwellenpuls", lt, "bpm"], ["CSS", css, "s/100 m"]].filter(([, t]) => t).map(([n, t, u]) => {
+            const tt = TEST_TYPES[t.data?.test] || {}, age = Math.round((new Date(today) - new Date(t.day)) / 864e5), old = age > (tt.wks || 8) * 7;
+            return <p key={n} className="note srcline"><b>{n} {Number(t.value)} {u}</b> · {tt.name} · Verlässlichkeit {old ? "gesunken (alt)" : tt.conf || "mittel"} · {age} Tage alt{old ? " – neuer Test empfohlen" : ` · nächster Test fällig ${fmt(addDays(t.day, 7 * (tt.wks || 8)))}`}</p>;
+          })}
         </div>
       </section>
 
