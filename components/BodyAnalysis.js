@@ -3,14 +3,28 @@ import ActionForm from "./ActionForm";
 import { WEAKNESSES } from "@/lib/catalog";
 
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
+const TONE = { "sehr gut": "good", gut: "good", stabil: "", gemischt: "warn", "rückläufig": "crit" };
+
+// Entwicklung über die Zeit: Bewertung, Text, konkrete Veränderungen
+export function Development({ e, short = false }) {
+  if (!e) return null;
+  return (
+    <div className={`ba-dev ${TONE[e.bewertung] || ""}`}>
+      <div className="ba-dev-h"><span className="lbl">Entwicklung{e.seit ? ` seit ${fmt(e.seit)}` : ""}</span><b>{e.bewertung}</b></div>
+      <p>{e.text}</p>
+      {!short && e.punkte?.length > 0 && <ul>{e.punkte.map((x) => <li key={x}>{x}</li>)}</ul>}
+    </div>
+  );
+}
 
 // Körperanalyse aus Fotos: Einschätzung, Stärken, Potenzial, Trainingsfokus – mit Übernahme in die Ziele
-export default function BodyAnalysis({ a, measured, ai, ro, analyze, adopt, compact = false, base = "" }) {
+export default function BodyAnalysis({ a, measured, ro, adopt, compact = false }) {
   if (!a) return null;
   const weak = (a.schwaechen || []).filter((k) => WEAKNESSES[k]);
   if (compact) return (
     <div className="ba compact">
       <p><b>{a.zusammenfassung}</b></p>
+      <Development e={a.entwicklung} short />
       <div className="ba-cols">
         {a.kf && <div className="ba-kf"><span>Körperfett geschätzt</span><b>{a.kf[0]}–{a.kf[1]} %</b>{measured != null && <small>gemessen {measured} %</small>}</div>}
         {a.defizite?.length > 0 && <div><span className="lbl">Potenzial</span><ul>{a.defizite.slice(0, 2).map((x) => <li key={x}>{x}</li>)}</ul></div>}
@@ -21,6 +35,7 @@ export default function BodyAnalysis({ a, measured, ai, ro, analyze, adopt, comp
   return (
     <div className="ba">
       <p className="ba-sum">{a.zusammenfassung}</p>
+      <Development e={a.entwicklung} />
       <div className="ba-top">
         {a.kf && <div className="ba-kf"><span>Körperfett geschätzt</span><b>{a.kf[0]}–{a.kf[1]} %</b><small>Sicherheit {a.kf_sicherheit}{measured != null ? ` · gemessen (InBody/Waage) ${measured} %` : ""}</small></div>}
         <div className="ba-list good"><span className="lbl">Das ist gut</span><ul>{a.staerken.map((x) => <li key={x}>{x}</li>)}</ul></div>
@@ -40,10 +55,7 @@ export default function BodyAnalysis({ a, measured, ai, ro, analyze, adopt, comp
         </ActionForm>
       )}
       {a.foto_hinweise?.length > 0 && <p className="note">Für bessere Fotos: {a.foto_hinweise.join(" · ")}</p>}
-      <div className="btnrow">
-        <span className="note">Einschätzung vom {fmt(a.day)} aus {a.photos?.length || 0} Foto{a.photos?.length === 1 ? "" : "s"} · ein Eindruck, keine Messung; InBody ist genauer.</span>
-        {ai && !ro && <ActionForm action={analyze} className="btnrow" submit="Neu analysieren" busy="Analysiert… (ca. 20 s)" reset={false}><input type="hidden" name="day" value={a.day} /></ActionForm>}
-      </div>
+      <p className="note">Analyse vom {fmt(a.day)}{a.basis ? ` · Grundlage: ${a.basis}` : ` aus ${a.photos?.length || 0} Foto${a.photos?.length === 1 ? "" : "s"}`} · ein Eindruck, keine Messung; InBody ist genauer.</p>
     </div>
   );
 }

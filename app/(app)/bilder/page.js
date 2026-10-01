@@ -4,8 +4,9 @@ import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
 import { MEDIA_KINDS, TEST_TYPES } from "@/lib/catalog";
-import { uploadMedia, deleteMedia, rereadInBody, comparePhotos, changeMedia, analyzeBodyAction, adoptWeaknesses, addManual, updateProfile } from "../../actions-data";
-import BodyAnalysis from "@/components/BodyAnalysis";
+import { uploadMedia, deleteMedia, deleteMediaDay, rereadInBody, comparePhotos, changeMedia, analyzeBodyAction, adoptWeaknesses, addManual, updateProfile } from "../../actions-data";
+import BodyAnalysis, { Development } from "@/components/BodyAnalysis";
+import ConfirmDelete from "@/components/ConfirmDelete";
 import CompareSlider from "@/components/CompareSlider";
 import { filesReady } from "@/lib/files";
 import { aiReady } from "@/lib/ai";
@@ -21,21 +22,21 @@ const d1 = (v) => (v == null ? "–" : Number(v).toFixed(1));
 const KPIS = [["Gewicht", "weight_kg", " kg", 0], ["Skelettmuskelmasse", "smm_kg", " kg", 1], ["Fettmasse", "fat_mass_kg", " kg", -1], ["Körperfett", "body_fat_pct", " %", -1], ["Viszeralfett", "visceral_level", "", -1]];
 const CARD_VALS = [["Gewicht", "weight_kg", "kg"], ["Muskelmasse", "smm_kg", "kg"], ["Fettmasse", "fat_mass_kg", "kg"], ["Körperfett", "body_fat_pct", "%"], ["Viszeralfett", "visceral_level", ""], ["Grundumsatz", "bmr_kcal", "kcal"]];
 
-// Datei-Aktionen: Art/Pose korrigieren, neu auslesen, löschen
+// Datei-Aktionen: Art/Pose korrigieren, neu auslesen (Löschen ist direkt sichtbar)
 function FileTools({ m, ai, ro }) {
   if (ro) return null;
   return (
-    <details className="ftools"><summary>Datei bearbeiten</summary>
+    <div className="ftools-row">
+    <ConfirmDelete action={deleteMedia} value={m.id} ask={m.kind === "inbody" || m.kind === "test" ? "Datei und die daraus ausgelesenen Werte löschen?" : "Datei löschen?"} />
+    <details className="ftools"><summary>Bearbeiten</summary>
       <ActionForm action={changeMedia} className="form" submit="Ändern" reset={false}>
         <input type="hidden" name="id" value={m.id} />
         <label className="f">Art<select name="kind" defaultValue={m.kind}>{Object.entries(MEDIA_KINDS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
         <label className="f">Pose<select name="pose" defaultValue={m.pose || "front"}><option value="front">Front</option><option value="side">Seite</option><option value="back">Rücken</option></select></label>
       </ActionForm>
-      <div className="btnrow">
-        {m.kind === "inbody" && ai && <ActionForm action={rereadInBody} className="btnrow" submit={m.extracted ? "Neu auslesen" : "Werte auslesen"} busy="Liest…" reset={false}><input type="hidden" name="id" value={m.id} /></ActionForm>}
-        <form action={deleteMedia}><input type="hidden" name="id" value={m.id} /><button className="btn danger sm" type="submit">Löschen</button></form>
-      </div>
+      {m.kind === "inbody" && ai && <ActionForm action={rereadInBody} className="btnrow" submit={m.extracted ? "Neu auslesen" : "Werte auslesen"} busy="Liest…" reset={false}><input type="hidden" name="id" value={m.id} /></ActionForm>}
     </details>
+    </div>
   );
 }
 
@@ -74,11 +75,14 @@ export default async function Bilder({ searchParams, demo } = {}) {
   const days = A && B ? Math.round((new Date(B.day) - new Date(A.day)) / 864e5) : 0;
 
   const docs = media.filter((m) => !["body_photo", "inbody"].includes(m.kind));
-  // Körperanalyse: neuester Fototag; läuft nach dem Upload im Hintergrund
-  const analyses = await repo.getBodyAnalyses(subject.id);
-  const lastPhotoDay = photos.map((p) => p.day).sort().at(-1) || null;
-  const ana = Object.values(analyses).sort((a, b) => (a.day < b.day ? 1 : -1))[0] || null;
-  const pending = lastPhotoDay && (!ana || ana.day < lastPhotoDay) && photos.some((p) => p.day === lastPhotoDay && Date.now() - new Date(p.created_at).getTime() < 3 * 60e3);
+  // Körper-Gesamtanalyse: läuft nach Foto- oder InBody-Upload im Hintergrund, sonst auf Knopfdruck
+  const hist = Object.values(await repo.getBodyAnalyses(subject.id)).sort((a, b) => ((a.created_at || a.day) < (b.created_at || b.day) ? 1 : -1));
+  const ana = hist[0] || null;
+  const bodyMedia = media.filter((m) => ["body_photo", "inbody"].includes(m.kind));
+  const newer = bodyMedia.filter((m) => !ana || (m.created_at || "") > (ana.created_at || ana.day));
+  const pending = ai && newer.some((m) => Date.now() - new Date(m.created_at).getTime() < 3 * 60e3);
+  const gone = ana ? [...(ana.photos || []), ...(ana.ref_photos || [])].some((id) => !media.some((m) => m.id === id)) : false;
+  const stale = ana && !pending && (newer.length > 0 || gone);
   const lastOf = (k) => manual.filter((m) => m.kind === k).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1))[0];
   const wLast = lastOf("weight"), bfLast = lastOf("bodyfat");
   const kgNow = wLast ? Number(wLast.value) : subject.weight_kg ?? null, cm = subject.height_cm ?? null;
@@ -135,14 +139,26 @@ export default async function Bilder({ searchParams, demo } = {}) {
       </section>
       )}
 
-      {photos.length > 0 && (
+      {(photos.length > 0 || ib.length > 0) && (
         <section className="panel">
-          <div className="panel-head"><h2 id="analyse">Körperanalyse</h2><span className="note">aus deinen Fotos, Messwerten und Zielen</span></div>
-          {ana ? <BodyAnalysis a={ana} measured={measuredBf} ai={ai} ro={ro} analyze={analyzeBodyAction} adopt={adoptWeaknesses} base={base} />
-            : pending ? <div className="notice good">Analyse läuft – in etwa 30 Sekunden die Seite neu laden.</div>
-            : ai && !ro ? <ActionForm action={analyzeBodyAction} className="btnrow" submit="Körper jetzt analysieren" busy="Analysiert… (ca. 20 s)" reset={false}><span className="note">Die KI schätzt Körperfett, Stärken und Potenzial und schlägt den passenden Trainingsfokus vor (ca. 3–5 Rappen).</span></ActionForm>
-            : <p className="muted">Die Körperanalyse braucht die KI (Admin → Schnittstellen).</p>}
-          {ana && pending && <p className="note">Neue Fotos werden gerade analysiert – in etwa 30 Sekunden neu laden.</p>}
+          <div className="panel-head"><h2 id="analyse">KI-Coach: dein Körper</h2>
+            {ai && !ro && <ActionForm action={analyzeBodyAction} className="btnrow" submit={ana ? "Analyse neu durchführen" : "Körper jetzt analysieren"} busy="Analysiert… (ca. 30 s)" reset={false} />}
+          </div>
+          <p className="note">Gesamtanalyse aus allen Körperfotos (aktuell und früher zum Vergleich), InBody-Verlauf, Gewicht und deinen Zielen: wo du stehst, wie du dich entwickelt hast, woran wir arbeiten. Läuft nach jedem Foto- oder InBody-Upload automatisch (ca. 3–6 Rappen).</p>
+          {pending && <div className="notice good">Neue Daten werden gerade analysiert – in etwa 30 Sekunden die Seite neu laden.</div>}
+          {stale && <div className="notice warn">Seit dieser Analyse hat sich etwas geändert (neue oder gelöschte Fotos/Messungen). „Analyse neu durchführen“ bringt sie auf den neusten Stand.</div>}
+          {ana ? <BodyAnalysis a={ana} measured={measuredBf} ro={ro} adopt={adoptWeaknesses} />
+            : !pending && <p className="muted">{ai ? "Noch keine Analyse. Ein Klick auf „Körper jetzt analysieren“ – die KI schätzt Körperfett, Stärken und Potenzial, beurteilt die Entwicklung und schlägt den Trainingsfokus vor." : "Die Körperanalyse braucht die KI (Admin → Schnittstellen)."}</p>}
+          {hist.length > 1 && (
+            <details className="ba-hist"><summary>Frühere Analysen ({hist.length - 1})</summary>
+              <ul className="list">{hist.slice(1).map((h) => (
+                <li key={h.day} className="ba-hrow">
+                  <b>{fmt(h.day)}</b>
+                  <span>{h.zusammenfassung}{h.kf ? <span className="note"> · Körperfett geschätzt {h.kf[0]}–{h.kf[1]} %</span> : null}<Development e={h.entwicklung} short /></span>
+                </li>
+              ))}</ul>
+            </details>
+          )}
         </section>
       )}
 
@@ -160,7 +176,9 @@ export default async function Bilder({ searchParams, demo } = {}) {
           <div className="kgrid">
             {timeline.map((c) => (
               <article key={c.day} className="kcard">
-                <header><b>{fmt(c.day)}</b>{c.inbody && <span className="tag on">InBody</span>}{c.photos.length > 0 && <span className="tag next">{c.photos.length} {c.photos.length === 1 ? "Foto" : "Fotos"}</span>}</header>
+                <header><b>{fmt(c.day)}</b>{c.inbody && <span className="tag on">InBody</span>}{c.photos.length > 0 && <span className="tag next">{c.photos.length} {c.photos.length === 1 ? "Foto" : "Fotos"}</span>}
+                  {!ro && (c.photos.length + c.sheets.length > 1 || (c.inbody && c.photos.length)) && <span className="kdel"><ConfirmDelete action={deleteMediaDay} name="day" value={c.day} label="Tag löschen" ask={`Alle Fotos und InBody-Werte vom ${fmt(c.day)} löschen?`} /></span>}
+                </header>
                 {c.photos.length > 0 && (
                   <div className="kph">{c.photos.map((p) => (
                     <figure key={p.id}>

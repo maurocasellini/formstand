@@ -180,22 +180,22 @@ export async function uploadMedia(_prev, form) {
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
   }
-  // Neue Körperfotos: Körperanalyse im Hintergrund (nach der Antwort)
-  if (found.body_photo && ai) after(async () => { try { await runBodyAnalysis(subject.id, day); } catch {} });
+  // Neue Körperfotos oder InBody-Werte: Gesamtanalyse im Hintergrund (nach der Antwort)
+  if ((found.body_photo || found.inbody) && ai) after(async () => { try { await runBodyAnalysis(subject.id); } catch {} });
   revalidatePath("/", "layout");
   const what = Object.entries(found).map(([k, n]) => `${n}× ${MEDIA_KINDS[k]}`).join(", ");
   return { ok: `Gespeichert: ${what}.${notes.length ? " " + notes.join(" · ") + "." : ""}${chosen === "auto" ? " Falsch erkannt? Bei der Datei die Art ändern." : ""}` };
 }
 
-// Körperanalyse auf Knopfdruck (neuester Fototag)
+// Körper-Gesamtanalyse auf Knopfdruck (alle Fotos, InBody, Gewicht)
 export async function analyzeBodyAction(_prev, form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;
   if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
-  try { await runBodyAnalysis(subject.id, String(form.get("day") || "") || null); }
+  try { await runBodyAnalysis(subject.id); }
   catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
   revalidatePath("/", "layout");
-  return { ok: "Körperanalyse erstellt." };
+  return { ok: "Analyse neu erstellt." };
 }
 // Vorgeschlagene Schwächen aus der Körperanalyse in die Ziele übernehmen (max. 4)
 export async function adoptWeaknesses(_prev, form) {
@@ -261,11 +261,24 @@ export async function createAdvice() {
   return { ok: "Empfehlung erstellt." };
 }
 
+// Datei löschen – mit ausgelesenen Werten (InBody, Test)
+async function dropMedia(userId, m) { try { await removeFile(m.pathname); } catch {} await repo.deleteMediaEntry(userId, m.id); await repo.deleteManualBySource(userId, m.id); }
 export async function deleteMedia(form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
-  if (m) { try { await removeFile(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
+  if (m) await dropMedia(subject.id, m);
+  revalidatePath("/", "layout");
+}
+// Alle Körperfotos und InBody-Blätter eines Tages löschen
+export async function deleteMediaDay(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const day = String(form.get("day") || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+  for (const m of (await repo.getMedia(subject.id)).filter((x) => x.day === day && ["body_photo", "inbody"].includes(x.kind))) await dropMedia(subject.id, m);
+  // InBody-Werte dieses Tages, auch wenn das Blatt an einem anderen Datum abgelegt ist
+  for (const e of (await repo.getManual(subject.id)).filter((x) => x.kind === "inbody" && x.day === day)) await repo.deleteManual(subject.id, e.id);
   revalidatePath("/", "layout");
 }
 
