@@ -15,7 +15,7 @@ import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, cl
 import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
 import { runBodyAnalysis } from "@/lib/bodyai";
 import { applyTest } from "@/lib/testread";
-import { makeAdvice } from "@/lib/coach";
+import { makeAdvice, makeFeedback } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
 import { TARGET_METRICS, seriesOf, ambition, goalEffects } from "@/lib/targets";
 import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES, TEST_RANGE, TEST_DURATIONS, testText } from "@/lib/catalog";
@@ -266,6 +266,16 @@ export async function rereadInBody(_prev, form) {
     revalidatePath("/bilder");
     return { error: String(e.message || e).slice(0, 200) };
   }
+}
+
+// KI-Feedback zu einem Zeitraum (Woche, Monat, Gesamtbild)
+export async function createFeedback(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
+  try { await makeFeedback(subject.id, String(form.get("period") || "")); } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
+  revalidatePath("/heute");
+  return { ok: "Feedback erstellt." };
 }
 
 // KI-Tagesempfehlung erstellen

@@ -9,10 +9,12 @@ import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession, saveEvening } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, saveCheckin, rateSession, saveEvening } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
-import { getTodayAdvice, todayModel } from "@/lib/coach";
+import { getTodayAdvice, todayModel, feedbackModel } from "@/lib/coach";
+import Tabs from "@/components/Tabs";
+import Feedback from "@/components/Feedback";
 import { ACT_LABEL } from "@/lib/adherence";
 import ActionForm from "@/components/ActionForm";
 import Targets from "@/components/Targets";
@@ -147,10 +149,16 @@ function Next({ items, today, week, phase, learned, base }) {
 
 export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
-  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = await todayModel(subject.id);
+  const M = await todayModel(subject.id);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = M;
   const tg = targetsOf(goals, manual, all, today);
   const tiles = trendTiles(all, vo2Summary(all, manual, subject, today));
   const fnd = findings(all, { activities, st, goals, triggers });
+  // Rückblick & Feedback: Woche, Vorwoche, 30 Tage, 90 Tage (+ gespeichertes KI-Feedback je Zeitraum)
+  const fbs = all.length > 40 ? await feedbackModel(subject.id, M) : [];
+  const fbAi = await repo.getFeedback(subject.id);
+  const aiFor = (f) => Object.values(fbAi).filter((x) => x.period === f.key && x.key.startsWith(`${f.key}:${f.from}`)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] || null;
+  const fbStart = new Date(today + "T12:00:00Z").getUTCDay() === 1 ? 1 : 0;
   const ws = hasGoals ? weekStatus(week, all, activities, today) : null;
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
@@ -232,6 +240,15 @@ export default async function Heute({ demo } = {}) {
             <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
+        </section>
+      )}
+
+      {hasAny && fbs.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Rückblick & Feedback</h2><span className="note">Woche, Monat und Gesamtbild – jeweils gegen den Zeitraum davor</span></div>
+          <Tabs labels={fbs.map((f) => f.label)} start={fbStart}>
+            {fbs.map((f) => <Feedback key={f.key} f={f} ai={aiFor(f)} aiOn={ai} ro={Boolean(viewer.demo)} action={createFeedback} />)}
+          </Tabs>
         </section>
       )}
 
