@@ -60,7 +60,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
       {ro && <div className="notice warn">Demo: Ziele und Wettkämpfe sind Beispiele. Mit eigenem Konto trägst du hier deine eigenen ein.</div>}
 
       <section className="panel">
-        <div className="panel-head"><h2>Wochenplan</h2>
+        <div className="panel-head"><h2 id="plan">Wochenplan</h2>
           <div className="btnrow"><span className="note">{plan.phase.label} · {plan.hours} h geplant</span>
             {week === 0 ? <Link className="btn ghost sm" href={`${base}/ziele?w=1`}>Nächste Woche →</Link> : <Link className="btn ghost sm" href={`${base}/ziele`}>← Diese Woche</Link>}</div></div>
         <div className="week">
@@ -114,7 +114,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
 
       <section className="grid2e">
         <div className="panel">
-          <h2>Wettkämpfe</h2>
+          <h2 id="wettkampf">Wettkämpfe</h2>
           {(goals.events || []).length ? (
             <ul className="list evs">{goals.events.map((e) => (
               <li key={e.id} className={e.date < today ? "past" : ""}><span className={`tag ${e.priority === "A" ? "on" : e.priority === "B" ? "next" : ""}`}>{e.priority}</span>
@@ -139,7 +139,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
         </div>
 
         <div className="panel">
-          <h2>Fokus, Schwächen & Zeit</h2>
+          <h2 id="ziele">Fokus, Schwächen & Zeit</h2>
           <ActionForm action={saveGoals} className="stack goalform" submit="Speichern" reset={false}>
             <div className="f"><span className="lbl">Hauptziel</span>
               <div className="chips">{Object.entries(FOCUS).map(([k, [n, d]]) => <label key={k} title={d}><input type="radio" name="focus" value={k} defaultChecked={goals.focus === k} /><span>{n}</span></label>)}</div></div>
@@ -184,7 +184,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
         </div>
         {showBody ? (
           <div className="panel">
-            <div className="panel-head"><h2>Körperziel</h2><span className="note">{FOCUS[goals.focus][0]}</span></div>
+            <div className="panel-head"><h2 id="koerperziel">Körperziel</h2><span className="note">{FOCUS[goals.focus][0]}</span></div>
             <div className="hl ctx">
               <div className="hli"><span>Gewicht (Ø 7 Tage)</span><b>{body.now ?? "–"}<small className="note"> kg</small></b>{goals.targetWeight && <small className="note">Ziel {goals.targetWeight} kg · noch {body.now != null ? Math.abs(Math.round((body.now - goals.targetWeight) * 10) / 10) : "–"} kg</small>}</div>
               <div className="hli"><span>Trend 4 Wochen</span><b>{body.slope != null ? `${body.slope > 0 ? "+" : ""}${body.slope}` : "–"}<small className="note"> kg/Woche</small></b>{body.pct != null && <small className="note">{body.pct > 0 ? "+" : ""}{body.pct} % pro Woche</small>}</div>

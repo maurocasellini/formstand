@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import BackLink from "@/components/BackLink";
 import Logo from "@/components/Logo";
 import SubjectPicker from "@/components/SubjectPicker";
 import { viewerAndSubject } from "@/lib/subject";
@@ -32,6 +33,7 @@ export default async function AppLayout({ children }) {
         </div>
       </header>
       <main className="wrap">
+        <BackLink />
         {viewer.must_change && <div className="notice warn">Du nutzt noch das Startpasswort. <Link href="/konto">Jetzt ändern</Link></div>}
         {subject.id !== viewer.id && <div className="notice warn">Du siehst die Daten von <b>{subject.name}</b>.</div>}
         {children}

@@ -1,0 +1,24 @@
+import Link from "next/link";
+
+// Schnellzugriff auf der Übersicht: Wohin für welche Aufgabe.
+const LINKS = [
+  ["/ziele#anpassen", "Training anpassen", "Keine Zeit, mit Buddy, fester Termin"],
+  ["/eingaben#training", "Training nachtragen", "Einheit ohne Uhr erfassen"],
+  ["/ziele#plan", "Wochenplan", "Was diese Woche ansteht"],
+  ["/ziele#wettkampf", "Wettkämpfe & Ziele", "Rennen, Schwächen, Zeitbudget"],
+  ["/bilder?art=body_photo#hochladen", "Fotos hochladen", "Körperfotos und Vergleich"],
+  ["/bilder?art=inbody#hochladen", "InBody hochladen", "Blatt fotografieren, KI liest es"],
+  ["/eingaben#gewicht", "Messungen", "Gewicht, Körperfett, Tests, Trigger"],
+  ["/entwicklung", "Entwicklung", "Was sich verändert hat"],
+];
+
+export default function QuickLinks({ base = "", demo = false }) {
+  const items = LINKS.filter(([href]) => !(demo && href === "/quellen"));
+  return (
+    <nav className="quick" aria-label="Schnellzugriff">
+      {items.map(([href, t, d]) => (
+        <Link key={href} href={`${base}${href}`} className="quick-i"><b>{t}</b><span>{d}</span></Link>
+      ))}
+    </nav>
+  );
+}

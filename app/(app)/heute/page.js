@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { pageContext } from "@/lib/subject";
+import QuickLinks from "@/components/QuickLinks";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
@@ -113,6 +114,8 @@ export default async function Heute({ demo } = {}) {
           <Link className="btn ghost sm" href={base ? "/register" : "/quellen"}>Quellen verwalten</Link>
         </div>
       </div>
+
+      <QuickLinks base={base} demo={Boolean(viewer.demo)} />
 
       {!viewer.demo && subject.id === viewer.id && (() => {
         const steps = [

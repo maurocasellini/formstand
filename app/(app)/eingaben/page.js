@@ -30,7 +30,7 @@ export default async function Eingaben({ demo } = {}) {
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Eingaben</h1><p>Alles, was keine Schnittstelle liefert. Wird getrennt von den API-Daten gespeichert, mit Datum und Autor.</p></div></div>
 
       <section className="panel">
-        <div className="panel-head"><h2>Training nachtragen</h2><span className="note">für Einheiten ohne Uhr – zählt für Belastung, Muskulatur und Plan-Treue</span></div>
+        <div className="panel-head"><h2 id="training">Training nachtragen</h2><span className="note">für Einheiten ohne Uhr – zählt für Belastung, Muskulatur und Plan-Treue</span></div>
         <ActionForm action={addWorkout} submit="Eintragen">
           <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
           <label className="f">Sport<select name="sport" defaultValue="bike"><option value="bike">Rad</option><option value="run">Laufen</option><option value="swim">Schwimmen</option><option value="strength">Kraft</option><option value="hike">Wandern</option><option value="other">Anderes</option></select></label>
@@ -47,7 +47,7 @@ export default async function Eingaben({ demo } = {}) {
 
       <section className="grid3">
         <div className="panel">
-          <h2>Gewicht &amp; Körperfett</h2>
+          <h2 id="gewicht">Gewicht &amp; Körperfett</h2>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="weight" />
             <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
@@ -61,7 +61,7 @@ export default async function Eingaben({ demo } = {}) {
           <p className="note">InBody-Blatt lieber unter „Bilder &amp; Dokumente“ hochladen, damit das Original erhalten bleibt.</p>
         </div>
         <div className="panel">
-          <h2>Trigger</h2>
+          <h2 id="trigger">Trigger</h2>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="trigger" />
             <label className="f">Datum (Abend)<input type="date" name="day" defaultValue={today} max={today} /></label>
@@ -71,7 +71,7 @@ export default async function Eingaben({ demo } = {}) {
           <p className="note">Wie dein Körper am Morgen danach reagiert, steht unten unter „Deine Trigger“.</p>
         </div>
         <div className="panel">
-          <h2>Profil</h2>
+          <h2 id="profil">Profil</h2>
           <ActionForm action={updateProfile} reset={false}>
             <label className="f">Sportart<select name="sport" defaultValue={subject.sport || ""}><option value="">–</option>{SPORTS.map((s) => <option key={s}>{s}</option>)}</select></label>
             <label className="f">Gewicht kg<input type="number" name="weight_kg" step="0.1" defaultValue={subject.weight_kg ?? ""} /></label>
@@ -100,7 +100,7 @@ export default async function Eingaben({ demo } = {}) {
 
       <section className="grid2e">
         <div className="panel">
-          <h2>Leistungstest eintragen</h2>
+          <h2 id="test">Leistungstest eintragen</h2>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="test" />
             <label className="f">Test<select name="test">{Object.entries(TEST_TYPES).map(([k, t]) => <option key={k} value={k}>{t.name} · {t.label}</option>)}</select></label>

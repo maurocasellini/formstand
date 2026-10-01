@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import BackLink from "@/components/BackLink";
 import Logo from "@/components/Logo";
 import ReadOnly from "@/components/ReadOnly";
 
@@ -25,6 +26,7 @@ export default function DemoLayout({ children }) {
       <ReadOnly>
         <main className="wrap demo-ro">
           <div className="notice good demo-bar"><span><b>Demo.</b> Alex ist fiktiv, alle Werte sind Beispieldaten (Garmin, WHOOP, Strava, InBody). Klick dich frei durch; speichern lässt sich hier nichts.</span><Link className="btn sm" href="/register">Eigenes Konto anlegen</Link></div>
+          <BackLink demo />
           {children}
         </main>
       </ReadOnly>

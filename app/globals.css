@@ -346,3 +346,12 @@ details.more>summary{cursor:pointer;font-weight:700;font-size:15px;display:flex;
 details.more[open]>summary{margin-bottom:12px}
 details.more{display:block}
 details.more .cards{margin-bottom:16px}
+/* Navigation: Schnellzugriff und Zurück */
+.quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.quick-i{display:grid;gap:2px;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);text-decoration:none;color:var(--fg);min-width:0}
+.quick-i b{font-size:14px}
+.quick-i span{font-size:12px;color:var(--muted)}
+.quick-i:hover{border-color:var(--accent)}
+.back{justify-self:start;font-size:14px;font-weight:600;text-decoration:none;color:var(--accent);padding:4px 0}
+h2[id]{scroll-margin-top:150px}
+@media (max-width:560px){.quick{grid-template-columns:1fr 1fr;gap:8px}.quick-i{padding:9px 12px;border-radius:12px}.quick-i span{display:none}.quick-i b{font-size:13px}}
