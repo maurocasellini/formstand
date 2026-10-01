@@ -540,3 +540,11 @@ details.more-data>section,details.more-data>.panel{box-shadow:none}
 .fpick b{font-size:15px;color:var(--fg)}
 .fpick small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .fpick svg{flex:none}
+/* Abend-Faktoren */
+.step{display:inline-flex;align-items:center;gap:6px}
+.step button{width:36px;height:40px;border-radius:10px;border:0;background:var(--sunk);color:var(--fg);font-size:18px;font-weight:700;cursor:pointer}
+.step input{width:64px;text-align:center}
+.evgrid summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--accent-ink)}
+.evgrid[open] summary{margin-bottom:10px}
+.egrid td{vertical-align:top}
+.chips.sm span{padding:4px 9px;font-size:12px}

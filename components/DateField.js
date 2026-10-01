@@ -57,7 +57,7 @@ export default function DateField({ name, defaultValue, value, onChange, min, ma
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
       </button>
       {open && (
-        <div className="df-pop" role="dialog" aria-label="Datum wählen">
+        <div className="df-pop" role="dialog" aria-label="Datum wählen" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
           <div className="df-head">
             <button type="button" className="df-nav" onClick={() => (mode === "days" ? step(-1) : setView((v) => ({ ...v, y: v.y - 1 })))} aria-label="zurück">‹</button>
             <button type="button" className="df-title" onClick={() => setMode(mode === "days" ? "months" : "days")}>{mode === "days" ? `${MONTHS[view.m]} ${view.y}` : view.y}</button>

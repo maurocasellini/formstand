@@ -2,11 +2,13 @@ import Link from "next/link";
 import { pageContext } from "@/lib/subject";
 import QuickLinks from "@/components/QuickLinks";
 import { learnedText } from "@/lib/learn";
+import EveningForm from "@/components/EveningForm";
+import { eveningMap } from "@/lib/evening";
 import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession, saveEvening } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
 import { getTodayAdvice, todayModel } from "@/lib/coach";
@@ -243,19 +245,9 @@ export default async function Heute({ demo } = {}) {
       )}
 
       <section className="panel">
-          <div className="panel-head"><h2>Trigger heute</h2><span className="note">wirken auf morgen früh</span></div>
-          <ActionForm action={addManual} submit="Eintragen">
-            <input type="hidden" name="kind" value="trigger" />
-            <input type="hidden" name="day" value={today} />
-            <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
-            <label className="f">Menge (z. B. Gläser)<input type="number" name="value" min="1" max="20" step="1" defaultValue="1" /></label>
-          </ActionForm>
-          <ul className="list">
-            {todayTrig.length ? todayTrig.map((t) => (
-              <li key={t.id}><span className="tag wait">heute</span><span>{triggerName(t.data?.t)}{t.data?.t === "alkohol" ? ` · ${Number(t.value)} Gl.` : ""}{(() => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? <small className="note" style={{ display: "block" }}>Erfahrungsgemäss morgen HRV {r.metrics.hrv.diff > 0 ? "+" : "−"}{Math.abs(Math.round(r.metrics.hrv.diff))} %{r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}</small> : null; })()}</span>
-                <form action={deleteManual}><input type="hidden" name="id" value={t.id} /><button className="x" type="submit" aria-label="Entfernen">✕</button></form></li>
-            )) : <li style={{ gridTemplateColumns: "1fr" }}><span className="muted">Heute noch nichts eingetragen.</span></li>}
-          </ul>
+        <div className="panel-head"><h2>Abend-Faktoren</h2><Link className="note" href={`${base}/eingaben#trigger`}>Mehrere Abende nachtragen →</Link></div>
+        <EveningForm entries={eveningMap(manual, addDays(today, -60))} today={today} action={saveEvening} factors={TRIGGERS.filter(([k]) => k !== "alkohol")} />
+        {todayTrig.length > 0 && <p className="note">{todayTrig.map((t) => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? `Deine Reaktion nach ${triggerName(t.data?.t)}: HRV ${r.metrics.hrv.diff > 0 ? "+" : "−"}${Math.abs(Math.round(r.metrics.hrv.diff))} %${r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}. ` : ""; }).join("")}</p>}
       </section>
 
       {!viewer.demo && subject.id === viewer.id && (() => {

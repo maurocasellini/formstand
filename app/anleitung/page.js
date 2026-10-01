@@ -143,7 +143,7 @@ export default async function Anleitung() {
             <li><b>Morgens:</b> Uhr synchronisieren (Garmin-App kurz öffnen), dann in Formstand einchecken: Energie, Motivation, Stress, Muskelkater, Zeit für Training.</li>
             <li>Die <b>Entscheidung für heute</b> lesen – inklusive „nicht empfohlen“ und Ernährung.</li>
             <li><b>Nach dem Training:</b> bei „Wie hart war's?“ die Anstrengung antippen.</li>
-            <li><b>Abends:</b> Trigger eintragen, wenn etwas war (Alkohol, spät gegessen, Stress …). Formstand lernt daraus, was dich wie stark beeinflusst.</li>
+            <li><b>Abends:</b> unter „Abend-Faktoren“ Alkohol (Gläser) und weitere Faktoren antippen – spät gegessen, Stress, Sauna, Mobility … Vergessen? Einfach ein früheres Datum wählen oder unter Eingaben die letzten 14 Abende auf einmal nachtragen. Formstand lernt daraus, wie du am Morgen danach reagierst.</li>
           </ol>
         </Step>
 

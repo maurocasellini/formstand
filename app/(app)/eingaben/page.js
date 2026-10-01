@@ -3,7 +3,9 @@ import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
-import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout } from "../../actions-data";
+import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid } from "../../actions-data";
+import EveningForm from "@/components/EveningForm";
+import { eveningMap } from "@/lib/evening";
 import { INBODY_FIELDS } from "@/lib/ai";
 import { analyzeTriggers, analyzePairs, pairLine } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
@@ -16,6 +18,9 @@ export default async function Eingaben({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const today = todayIso();
   const allMan = (await repo.getManual(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
+  const eve = eveningMap(allMan, addDays(today, -400));
+  const gridDays = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
+  const FACTORS = TRIGGERS.filter(([k]) => k !== "alkohol");
   const entries = allMan.slice(0, 60);
   const tests = allMan.filter((e) => e.kind === "test");
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr), css = tests.find((t) => TEST_TYPES[t.data?.test]?.css);
@@ -62,16 +67,31 @@ export default async function Eingaben({ demo } = {}) {
           </ActionForm>
           <p className="note">InBody-Auswertung lieber unter „Körper“ hochladen – die Werte werden ausgelesen und das Original bleibt erhalten.</p>
         </div>
-        <div className="panel">
-          <h2 id="trigger">Trigger</h2>
-          <ActionForm action={addManual}>
-            <input type="hidden" name="kind" value="trigger" />
-            <label className="f">Datum (Abend)<DateField name="day" defaultValue={today} max={today} /></label>
-            <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
-            <label className="f">Menge<input type="number" name="value" min="1" max="20" defaultValue="1" /></label>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2 id="trigger">Abend-Faktoren</h2><span className="note">Alkohol und alles, was die Nacht beeinflussen kann – auch rückwirkend</span></div>
+        <EveningForm entries={eve} today={today} action={saveEvening} factors={FACTORS} />
+        <details className="evgrid">
+          <summary>Letzte 14 Abende auf einmal nachtragen oder korrigieren</summary>
+          <ActionForm action={saveEveningGrid} className="stack" submit="Alle 14 Abende speichern" reset={false}>
+            <input type="hidden" name="days" value={gridDays.join(",")} />
+            <div className="tbl-wrap"><table className="egrid">
+              <thead><tr><th>Abend</th><th>Alkohol (Gl.)</th><th>Weitere Faktoren</th></tr></thead>
+              <tbody>{gridDays.map((d) => {
+                const e = eve[d] || { alc: 0, f: [] };
+                return (
+                  <tr key={d}>
+                    <td className="num">{["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][new Date(d + "T12:00:00Z").getUTCDay()]} {d.slice(8, 10)}.{d.slice(5, 7)}.</td>
+                    <td><input type="number" name={`alc_${d}`} min="0" max="20" defaultValue={e.alc || 0} style={{ width: 70 }} /></td>
+                    <td><div className="chips sm">{FACTORS.map(([k, n]) => <label key={k}><input type="checkbox" name={`f_${d}`} value={k} defaultChecked={e.f.includes(k)} /><span>{n}</span></label>)}</div></td>
+                  </tr>
+                );
+              })}</tbody>
+            </table></div>
           </ActionForm>
-          <p className="note">Wie du am Morgen danach reagierst, steht unten unter „Deine Reaktion nach …“.</p>
-        </div>
+        </details>
+        <p className="note">Weiter zurück? Oben im Datum einen beliebigen Abend wählen. Wie du am Morgen danach reagierst, steht gleich unten.</p>
       </section>
 
       <section className="panel">

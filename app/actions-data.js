@@ -15,7 +15,7 @@ import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, cl
 import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
-import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS } from "@/lib/catalog";
+import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS } from "@/lib/catalog";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -41,6 +41,35 @@ export async function addManual(_prev, form) {
   if (kind === "weight") await repo.updateUser(subject.id, { weight_kg: value });
   revalidatePath("/", "layout");
   return { ok: "Gespeichert." };
+}
+
+// Abend-Faktoren: Alkohol (Gläser) getrennt, weitere Faktoren zum Antippen. Ein Abend oder viele Abende (Nachtragen).
+const FACTOR_KEYS = new Set(TRIGGERS.map((x) => x[0]));
+const eveningOf = (form, sfx = "") => {
+  const out = [];
+  const alc = Math.max(0, Math.min(20, Math.round(numOf(form.get(`alc${sfx}`)) || 0)));
+  if (alc > 0) out.push({ t: "alkohol", n: alc });
+  for (const f of form.getAll(`f${sfx}`).map(String)) if (FACTOR_KEYS.has(f) && f !== "alkohol" && !out.some((x) => x.t === f)) out.push({ t: f, n: 1 });
+  return out;
+};
+export async function saveEvening(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const day = dayOf(form.get("day"));
+  if (day > todayIso()) return { error: "Datum liegt in der Zukunft." };
+  const list = eveningOf(form);
+  await repo.setTriggers(subject.id, { [day]: list }, viewer.id);
+  revalidatePath("/", "layout");
+  return { ok: list.length ? `Gespeichert für ${day.split("-").reverse().join(".")}.` : `Für ${day.split("-").reverse().join(".")} ist nichts mehr eingetragen.` };
+}
+export async function saveEveningGrid(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const days = String(form.get("days") || "").split(",").filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayIso()).slice(0, 62);
+  const byDay = Object.fromEntries(days.map((d) => [d, eveningOf(form, `_${d}`)]));
+  await repo.setTriggers(subject.id, byDay, viewer.id);
+  revalidatePath("/", "layout");
+  return { ok: `${days.length} Abende gespeichert.` };
 }
 
 export async function deleteManual(form) {
