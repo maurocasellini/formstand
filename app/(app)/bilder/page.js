@@ -17,7 +17,7 @@ export default async function Bilder() {
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Bilder &amp; Dokumente</h1><p>Körperfotos, Mahlzeiten, InBody-Auswertungen und Blutwerte. Privat gespeichert, nur über dein Konto abrufbar.</p></div></div>
       <section className="panel">
         <h2>Hochladen</h2>
-        {!blobOk && <div className="notice warn">Der Dateispeicher ist noch nicht verbunden. In Vercel unter Storage einen Blob-Speicher mit dem Projekt verbinden.</div>}
+        {!blobOk && <div className="notice warn">Der Dateispeicher ist noch nicht verbunden.</div>}
         <ActionForm action={uploadMedia} submit="Hochladen">
           <label className="f">Art<select name="kind" defaultValue="body_photo">{Object.entries(MEDIA_KINDS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
           <label className="f">Datum<input type="date" name="day" defaultValue={todayIso()} /></label>

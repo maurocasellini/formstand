@@ -77,7 +77,7 @@ export default async function Heute() {
       {!hasAny && (
         <div className="panel">
           <h2>Noch keine Daten</h2>
-          <p className="muted">Verbinde Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
+          <p className="muted">Verbinde intervals.icu, Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
           <div className="btnrow">
             <Link className="btn" href="/quellen">Quellen verbinden</Link>
             <form action={loadDemo}><button className="btn ghost" type="submit">Beispieldaten laden</button></form>
