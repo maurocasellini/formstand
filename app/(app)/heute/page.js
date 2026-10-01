@@ -257,7 +257,7 @@ export default async function Heute({ demo } = {}) {
           ["Einmal eingecheckt", manual.some((m) => m.kind === "checkin"), "/heute#checkin", "/anleitung#taeglich"],
           ["Ziele & Schwächen gesetzt", hasGoals, "/ziele", "/anleitung#ziele"],
           ["Morgen-Erinnerung an", pushOn, "/konto", "/anleitung#push"],
-          ["Leistungstest eingetragen", manual.some((m) => m.kind === "test"), "/eingaben", "/anleitung#tests"],
+          ["Leistungstest eingetragen", manual.some((m) => m.kind === "test"), "/eingaben", "/anleitung#koerper"],
         ];
         const done = steps.filter((x) => x[1]).length;
         if (done === steps.length) return null;

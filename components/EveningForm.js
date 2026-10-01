@@ -22,7 +22,7 @@ export default function EveningForm({ entries = {}, today, action, factors }) {
         <div className="form">
           <label className="f">Datum<DateField name="day" value={day} onChange={(v) => v && setDay(v)} max={today} required /></label>
           <div className="f"><span className="lbl">Alkohol (Gläser)</span>
-            <div className="step">
+            <div className="stepper">
               <button type="button" onClick={() => setAlc((a) => Math.max(0, a - 1))} aria-label="Ein Glas weniger">−</button>
               <input type="number" name="alc" value={alc} min="0" max="20" onChange={(e) => setAlc(Math.max(0, Math.min(20, Number(e.target.value) || 0)))} />
               <button type="button" onClick={() => setAlc((a) => Math.min(20, a + 1))} aria-label="Ein Glas mehr">+</button>

@@ -1,17 +1,33 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 import { baseUrl } from "@/lib/baseurl";
 
-export const metadata = { title: "Formstand – Anleitung", description: "Schritt für Schritt: Konto, Garmin über intervals.icu, Strava, WHOOP, Erinnerung, Ziele." };
+export const metadata = { title: "Formstand – Anleitung", description: "Schritt für Schritt: Konto, Uhr und Apps über intervals.icu, Erinnerung, Ziele, Körper und Alltag." };
 
+// Bausteine: Schritt mit Nummer und Zeitbedarf, Teilschritt, Hinweis-Kasten
 function Step({ n, id, title, time, children }) {
   return (
-    <section className="panel step" id={id}>
-      <div className="step-h"><span className="step-n">{n}</span><h2>{title}</h2>{time && <span className="note">{time}</span>}</div>
-      <div className="step-b">{children}</div>
+    <section className="g-step" id={id}>
+      <div className="g-num" aria-hidden="true">{n}</div>
+      <div className="g-card">
+        <header><h2>{title}</h2>{time && <span className="g-time">{time}</span>}</header>
+        <div className="g-body">{children}</div>
+      </div>
     </section>
   );
 }
+const Sub = ({ k, title, children }) => (
+  <div className="g-sub"><div className="g-sub-h">{k && <span>{k}</span>}<b>{title}</b></div>{children}</div>
+);
+const Tip = ({ tone = "info", children }) => <div className={`g-tip ${tone}`}>{children}</div>;
+
+const TOC = [
+  ["Einrichten", [["konto", "1", "Konto anlegen"], ["app", "2", "Aufs Handy"], ["garmin", "3", "Uhr & Apps verbinden"], ["push", "4", "Morgen-Erinnerung"]]],
+  ["Loslegen", [["ziele", "5", "Ziele & Wettkämpfe"], ["koerper", "6", "Tests & Körper"], ["taeglich", "7", "Jeden Tag"]]],
+  ["Optional", [["historie", "A", "Garmin-Historie"], ["strava", "B", "Strava & WHOOP direkt"]]],
+  ["Hilfe", [["hilfe", "?", "Häufige Fragen"], ["admin", "⚙", "Für den Admin"]]],
+];
 
 export default async function Anleitung() {
   const base = await baseUrl();
@@ -21,152 +37,162 @@ export default async function Anleitung() {
       <header className="bar">
         <div className="bar-in"><div className="bar-top">
           <Link href="/" className="logo"><Logo /><b>Formstand</b></Link>
-          <div className="who"><Link className="btn ghost sm" href="/demo">Demo</Link><Link className="btn ghost sm" href="/login">Anmelden</Link><Link className="btn sm" href="/register">Konto anlegen</Link></div>
+          <div className="who"><ThemeToggle /><Link className="btn ghost sm" href="/demo">Demo</Link><Link className="btn ghost sm" href="/login">Anmelden</Link><Link className="btn sm" href="/register">Konto anlegen</Link></div>
         </div></div>
       </header>
-      <main className="wrap guide">
-        <div className="head"><div style={{ display: "grid", gap: 4 }}>
-          <h1>So richtest du Formstand ein</h1>
-          <p>Dauert etwa 15 Minuten. Danach läuft alles automatisch: jeden Morgen holt Formstand deine Daten, du checkst in 5 Sekunden ein und bekommst die Entscheidung für den Tag.</p>
-        </div></div>
 
-        <nav className="toc panel">
-          <b>Übersicht</b>
-          <ol>
-            <li><a href="#konto">Konto anlegen</a></li><li><a href="#app">Formstand aufs Handy</a></li><li><a href="#garmin">Garmin verbinden (über intervals.icu)</a></li>
-            <li><a href="#historie">Optional: ganze Garmin-Historie</a></li><li><a href="#strava">Strava, Zwift und WHOOP</a></li><li><a href="#push">Morgen-Erinnerung</a></li>
-            <li><a href="#ziele">Ziele, Wettkämpfe, Schwächen</a></li><li><a href="#tests">Tests und Körperwerte</a></li><li><a href="#taeglich">Was du täglich machst</a></li>
-          </ol>
-          <p className="note">Probleme? <a href="#hilfe">Häufige Fragen</a> · Admin? <a href="#admin">Einmalige Einrichtung</a></p>
-        </nav>
-
-        <Step n="1" id="konto" title="Konto anlegen" time="1 Minute">
-          <ol>
-            <li>Öffne <b>{host}/register</b> (<Link href="/register">hier</Link>).</li>
-            <li>Benutzername, Name und ein Passwort mit mindestens 8 Zeichen wählen, „Konto anlegen“.</li>
-            <li>Hat dir der Admin schon ein Konto angelegt: mit Benutzername und Startpasswort unter <Link href="/login">Anmelden</Link> einloggen. Formstand verlangt dann ein eigenes Passwort.</li>
-          </ol>
-        </Step>
-
-        <Step n="2" id="app" title="Formstand aufs Handy" time="1 Minute">
-          <p>Formstand ist eine Web-App. Als Symbol auf dem Home-Bildschirm funktioniert sie wie eine normale App, inklusive Mitteilungen.</p>
-          <ul>
-            <li><b>iPhone:</b> {host} in <b>Safari</b> öffnen → unten auf <b>Teilen</b> (Quadrat mit Pfeil) → <b>Zum Home-Bildschirm</b> → Hinzufügen.</li>
-            <li><b>Android:</b> in <b>Chrome</b> öffnen → Menü <b>⋮</b> → <b>App installieren</b> bzw. <b>Zum Startbildschirm hinzufügen</b>.</li>
-          </ul>
-          <p className="note">Ab jetzt Formstand immer über das Symbol öffnen.</p>
-        </Step>
-
-        <Step n="3" id="garmin" title="Uhr und Apps verbinden – über intervals.icu" time="5–10 Minuten">
-          <p>Garmin gibt seine Schnittstelle nur Firmen. Der Weg führt deshalb über <b>intervals.icu</b>: kostenlos, seriös und bei Ausdauersportlern verbreitet. intervals.icu holt deine Daten von Garmin, Formstand holt sie von intervals.icu – Schlaf, HRV, Ruhepuls, Body Battery, Stress, VO2max und alle Aktivitäten.</p>
-          <h3>a) Konto bei intervals.icu</h3>
-          <ol>
-            <li>Auf <a href="https://intervals.icu" target="_blank" rel="noreferrer">intervals.icu</a> ein Konto erstellen (mit E-Mail oder „mit Strava anmelden“).</li>
-          </ol>
-          <h3>b) Uhr und Apps mit intervals.icu verbinden</h3>
-          <ol>
-            <li>In intervals.icu links auf <b>Einstellungen</b> (Settings) gehen.</li>
-            <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben. Wichtig: auch die <b>Wellness-Daten</b> (Schlaf, HFV/HRV, Ruhe-HF) erlauben, sonst fehlt die Bereitschaft.</li>
-            <li>Gleich dort kannst du alles weitere anhängen, das du nutzt: <b>WHOOP, Polar, Oura, Zwift, Wahoo, COROS, Suunto</b> … Formstand bekommt dann alles gesammelt über intervals.icu. intervals.icu ist damit deine Hauptquelle.</li>
-            <li><b>Strava in intervals.icu bringt Formstand nichts:</b> Einheiten, die nur über Strava kommen, darf intervals.icu nicht weitergeben. Darum Uhr und Zwift direkt verbinden. Für ältere Strava-Einheiten gibt es in intervals.icu „Import All Strava Data“ – danach sind sie auch für Formstand da.</li>
-          </ol>
-          <h3>c) API-Schlüssel in intervals.icu holen</h3>
-          <ol>
-            <li>Direkt öffnen: <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer">intervals.icu/settings</a> (oder links auf <b>Einstellungen</b>).</li>
-            <li>Ganz nach unten scrollen bis zum Abschnitt <b>Entwicklereinstellungen</b> (englisch <b>Developer Settings</b>), meist das letzte Feld der Seite.</li>
-            <li>Dort steht die <b>Athleten-ID</b> (beginnt mit „i“, z. B. <span className="num">i123456</span>) und daneben der <b>API-Schlüssel</b>. Ist noch keiner da: auf <b>Generieren</b>/<b>Generate</b> klicken, sonst auf <b>Anzeigen</b>/<b>View</b>.</li>
-            <li>Den API-Schlüssel kopieren. Er ist wie ein Passwort: nur in Formstand einfügen, nicht weitergeben. Die Athleten-ID ist optional – ohne sie nimmt Formstand automatisch dein eigenes Konto.</li>
-          </ol>
-          <h3>d) In Formstand einfügen</h3>
-          <ol>
-            <li>In Formstand auf <b>Quellen</b> gehen.</li>
-            <li>Bei <b>intervals.icu</b> den <b>API-Schlüssel</b> (und optional die Athleten-ID) einfügen → <b>Verbinden</b>.</li>
-            <li>Formstand lädt sofort die letzten 12 Monate (kann eine halbe Minute dauern). Danach holt es jeden Morgen automatisch die neuen Daten.</li>
-          </ol>
-          <p className="note">intervals.icu gibt es auf Deutsch und Englisch; die Bezeichnungen können sich leicht ändern, die Abschnitte heissen sinngemäss gleich. Strava lässt sich nicht über intervals.icu an Formstand weitergeben (Strava verbietet das) – wer Strava will, verbindet es in Formstand separat. Doppelte Einheiten erkennt Formstand und zählt sie nur einmal.</p>
-        </Step>
-
-        <Step n="4" id="historie" title="Optional: die ganze Garmin-Historie" time="5 Minuten + Wartezeit">
-          <p>intervals.icu liefert die letzten Monate. Wer Jahre zurück will (z. B. für Trends und Einflussfaktoren):</p>
-          <ol>
-            <li>Auf <a href="https://connect.garmin.com" target="_blank" rel="noreferrer">connect.garmin.com</a> anmelden (am Computer).</li>
-            <li>Profilbild → <b>Kontoeinstellungen</b> → <b>Datenverwaltung</b> → <b>Daten exportieren</b> → Export anfordern.</li>
-            <li>Garmin schickt nach einigen Stunden bis Tagen einen Download-Link per E-Mail. ZIP herunterladen.</li>
-            <li>In Formstand unter <b>Quellen → Weitere Verbindungen → Garmin-Datenexport</b> die ZIP-Datei auswählen. Sie wird im Browser entpackt, nur die Werte werden übertragen.</li>
-          </ol>
-        </Step>
-
-        <Step n="5" id="strava" title="Optional: Strava separat" time="1 Minute">
-          <ul>
-            <li><b>Zwift, WHOOP, Polar, Oura &amp; Co.:</b> am einfachsten direkt in intervals.icu verbinden (Schritt 3). Dann ist hier nichts weiter nötig.</li>
-            <li><b>Strava:</b> nur nötig, wenn Workouts <i>nur</i> auf Strava landen. Quellen → <b>Weitere Verbindungen</b> → <b>Mit Strava verbinden</b> → bei Strava anmelden → Zugriff erlauben. Doppelte Einheiten werden zusammengeführt.</li>
-            <li><b>WHOOP direkt:</b> geht auch über Quellen → <b>Weitere Verbindungen</b> → <b>Mit WHOOP verbinden</b>, liefert zusätzlich Strain und Recovery. Nicht nötig, wenn WHOOP schon in intervals.icu hängt.</li>
-          </ul>
-          <p className="note">Steht bei Strava oder WHOOP „noch nicht freigeschaltet“, muss der Admin das einmalig erledigen (siehe unten).</p>
-        </Step>
-
-        <Step n="6" id="push" title="Morgen-Erinnerung einschalten" time="30 Sekunden">
-          <ol>
-            <li>Formstand <b>über das Symbol auf dem Home-Bildschirm</b> öffnen (auf dem iPhone geht Push nur so).</li>
-            <li>Oben rechts auf deinen Namen → <b>Mein Konto</b> → <b>Erinnerung auf diesem Gerät aktivieren</b> → Mitteilungen erlauben.</li>
-            <li>Mit <b>Test senden</b> prüfen. Ab morgen kommt jeden Morgen gegen 7 Uhr die Erinnerung mit dem Vorschlag des Tages.</li>
-          </ol>
-        </Step>
-
-        <Step n="7" id="ziele" title="Ziele, Wettkämpfe und Schwächen" time="3 Minuten">
-          <ol>
-            <li>Auf <b>Ziele & Plan</b> gehen.</li>
-            <li><b>Hauptziel</b> wählen (Leistung, Form halten, Abnehmen, Muskelaufbau, Gesundheit).</li>
-            <li><b>Schwächen</b> anklicken, an denen du arbeiten willst (bis 4), und die wichtigste auswählen.</li>
-            <li><b>Trainingstage</b>, <b>Stunden pro Woche</b> und den <b>Tag für die lange Einheit</b> eintragen (die längste ruhige Ausfahrt bzw. der lange Lauf, meist am Wochenende) → Speichern.</li>
-            <li><b>Wettkämpfe</b>: Namen ins Suchfeld (z. B. „ATHX St. Gallen“) → <b>Suchen</b>. Formstand findet Datum, Format und Kategorien und fragt nach, welche du startest (z. B. Single oder Doubles). Dann Priorität wählen: A = Saisonhöhepunkt (voller Aufbau mit Tapering), B = wichtig, C = Training.</li>
-          </ol>
-          <p className="note">Daraus entsteht dein Wochenplan. Die Tagesentscheidung folgt ihm, solange dein Körper mitmacht.</p>
-          <h3>Plan an dein Leben anpassen</h3>
-          <ul>
-            <li>Formstand schlägt die Woche vor, du passt an: bei einem Tag auf <b>Anpassen</b> – <b>Anders trainieren</b> (Vorschlag ist vorausgefüllt, z. B. auf „Ausfahrt mit Buddy“, hart, 120 min ändern), <b>Mit anderem Tag tauschen</b>, <b>Nur begrenzt Zeit</b> oder <b>Ruhetag</b>.</li>
-            <li>Häkchen <b>jede Woche so</b> setzen, dann wird es ein fester Termin (z. B. jeden Dienstag Gruppenausfahrt). Der Plan baut die Woche darum herum.</li>
-            <li>Training ohne Uhr gemacht? Unter <b>Eingaben → Training nachtragen</b> mit Dauer und Anstrengung eintragen.</li>
-          </ul>
-        </Step>
-
-        <Step n="8" id="tests" title="Tests und Körperwerte" time="nach Bedarf">
-          <ul>
-            <li><b>Eingaben → Leistungstest:</b> FTP (z. B. Zwift Ramp Test), Schwellenpuls (Garmin-Laktatschwelle), CSS fürs Schwimmen. Damit bekommst du Watt-, Puls- und Pace-Vorgaben.</li>
-            <li><b>Eingaben:</b> Gewicht, Profil (Sportart, Jahrgang).</li>
-            <li><b>Körper:</b> InBody-Auswertung (PDF oder Foto vom Ausdruck) und Körperfotos im selben Feld hochladen – Formstand erkennt selbst, was es ist, liest die InBody-Werte aus und ordnet Fotos nach Pose. Unter „Körperentwicklung“ stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich. Körperfotos alle 2–4 Wochen.</li>
-          </ul>
-        </Step>
-
-        <Step n="9" id="taeglich" title="Was du täglich machst" time="10 Sekunden">
-          <ol>
-            <li><b>Morgens:</b> Uhr synchronisieren (Garmin-App kurz öffnen), dann in Formstand einchecken: Energie, Motivation, Stress, Muskelkater, Zeit für Training.</li>
-            <li>Die <b>Entscheidung für heute</b> lesen – inklusive „nicht empfohlen“ und Ernährung.</li>
-            <li><b>Nach dem Training:</b> bei „Wie hart war's?“ die Anstrengung antippen.</li>
-            <li><b>Einflussfaktoren:</b> Alkohol (Gläser) und weitere Faktoren antippen – spät gegessen, Stress, Sauna, Mobility … Vergessen? Einfach ein früheres Datum wählen oder unter Eingaben die letzten 14 Tage auf einmal nachtragen. Formstand lernt daraus, wie du am Morgen danach reagierst.</li>
-          </ol>
-        </Step>
-
-        <section className="panel" id="hilfe">
-          <h2>Häufige Fragen</h2>
-          <dl className="faq">
-            <dt>intervals.icu lässt sich nicht verbinden</dt><dd>Athleten-ID mit „i“ am Anfang eingeben, API-Schlüssel ohne Leerzeichen kopieren. Notfalls in intervals.icu einen neuen Schlüssel erzeugen.</dd>
-            <dt>Workouts sind da, aber keine Bereitschaft/HRV</dt><dd>In intervals.icu bei der Garmin-Verbindung die Wellness-Daten erlauben. Die Uhr nachts tragen; Garmin braucht für den HRV-Status rund drei Wochen.</dd>
-            <dt>Die Werte von heute fehlen</dt><dd>Garmin-App öffnen und synchronisieren, kurz warten, dann in Formstand unter Quellen „Jetzt abgleichen“.</dd>
-            <dt>Keine Mitteilungen auf dem iPhone</dt><dd>Formstand muss als Symbol auf dem Home-Bildschirm installiert und von dort geöffnet sein (iOS 16.4 oder neuer). In den iPhone-Einstellungen Mitteilungen für Formstand erlauben.</dd>
-            <dt>Wer sieht meine Daten?</dt><dd>Nur du, der Admin und ein Coach, dem du zugeordnet bist. Zugangsdaten zu anderen Diensten werden verschlüsselt gespeichert. Verbindungen kannst du unter Quellen jederzeit trennen.</dd>
-          </dl>
+      <main className="g-wrap">
+        <section className="g-hero">
+          <span className="g-kicker">Anleitung</span>
+          <h1>In 15 Minuten startklar</h1>
+          <p>Einmal einrichten, danach läuft alles automatisch: Jeden Morgen holt Formstand deine Daten, du checkst in 5 Sekunden ein und bekommst die Entscheidung für den Tag.</p>
+          <div className="g-facts">
+            <span><b>15 min</b> einmalig</span><span><b>10 s</b> pro Tag</span><span><b>gratis</b> inkl. intervals.icu</span>
+          </div>
+          <div className="btnrow"><Link className="btn" href="/register">Konto anlegen</Link><Link className="btn ghost" href="/demo">Erst die Demo ansehen</Link></div>
         </section>
 
-        <section className="panel" id="admin">
-          <h2>Für den Admin – einmalig</h2>
-          <ul>
-            <li><b>Strava freischalten:</b> auf <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer">strava.com/settings/api</a> eine App anlegen (Name z. B. „Formstand“, Website {base}, <b>Authorization Callback Domain: <span className="num">{host}</span></b>). Client ID und Client Secret in Formstand unter <b>Admin → Schnittstellen</b> eintragen.</li>
-            <li><b>WHOOP freischalten:</b> auf <a href="https://developer.whoop.com" target="_blank" rel="noreferrer">developer.whoop.com</a> eine App anlegen, Redirect-URL <span className="num">{base}/api/oauth/whoop</span>, alle read-Scopes und offline aktivieren. Client ID/Secret im Admin eintragen.</li>
-            <li><b>KI (optional):</b> Claude-API-Schlüssel in Vercel als Umgebungsvariable <span className="num">ANTHROPIC_API_KEY</span> (sensitive) hinterlegen, Modelle und Monatslimit unter Admin → Schnittstellen.</li>
-            <li><b>Leute einladen:</b> Im Admin steht ein fertiger Einladungstext mit allen Links zum Kopieren.</li>
-          </ul>
-        </section>
+        <div className="g-layout">
+          <nav className="g-toc" aria-label="Inhalt">
+            {TOC.map(([grp, items]) => (
+              <div key={grp} className="g-toc-g"><span>{grp}</span>
+                {items.map(([id, n, t]) => <a key={id} href={`#${id}`}><i>{n}</i>{t}</a>)}
+              </div>
+            ))}
+          </nav>
+
+          <div className="g-main">
+            <h2 className="g-part">Einrichten</h2>
+
+            <Step n="1" id="konto" title="Konto anlegen" time="1 Minute">
+              <ol>
+                <li>Öffne <Link href="/register"><b>{host}/register</b></Link>.</li>
+                <li>Benutzername, Name und ein Passwort mit mindestens 8 Zeichen wählen → <b>Konto anlegen</b>.</li>
+              </ol>
+              <Tip>Hat dir der Admin schon ein Konto angelegt? Dann mit Benutzername und Startpasswort unter <Link href="/login">Anmelden</Link> einloggen – Formstand verlangt danach ein eigenes Passwort.</Tip>
+            </Step>
+
+            <Step n="2" id="app" title="Formstand aufs Handy" time="1 Minute">
+              <p>Formstand ist eine Web-App. Als Symbol auf dem Home-Bildschirm funktioniert sie wie eine normale App – inklusive Mitteilungen.</p>
+              <div className="g-two">
+                <Sub title="iPhone"><p>{host} in <b>Safari</b> öffnen → <b>Teilen</b> (Quadrat mit Pfeil) → <b>Zum Home-Bildschirm</b> → Hinzufügen.</p></Sub>
+                <Sub title="Android"><p>In <b>Chrome</b> öffnen → Menü <b>⋮</b> → <b>App installieren</b> bzw. <b>Zum Startbildschirm hinzufügen</b>.</p></Sub>
+              </div>
+              <Tip>Ab jetzt Formstand immer über das Symbol öffnen.</Tip>
+            </Step>
+
+            <Step n="3" id="garmin" title="Uhr und Apps verbinden – über intervals.icu" time="5–10 Minuten">
+              <p>Garmin öffnet seine Schnittstelle nur für Firmen. Der Weg führt deshalb über <b>intervals.icu</b> – kostenlos und bei Ausdauersportlern verbreitet. Dort hängst du alle Geräte an, Formstand holt dann alles gesammelt ab: Schlaf, HRV, Ruhepuls, Gewicht und alle Einheiten.</p>
+              <Sub k="a" title="Konto bei intervals.icu">
+                <p>Auf <a href="https://intervals.icu" target="_blank" rel="noreferrer">intervals.icu</a> ein Gratis-Konto erstellen.</p>
+              </Sub>
+              <Sub k="b" title="Uhr und Apps in intervals.icu verbinden">
+                <ol>
+                  <li>In intervals.icu auf <b>Einstellungen</b> (Settings).</li>
+                  <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> → mit dem Garmin-Login anmelden → Zugriff erlauben.</li>
+                  <li>Gleich dort weitere Dienste anhängen, die du nutzt: <b>WHOOP, Polar, Oura, Zwift, Wahoo, COROS, Suunto</b> …</li>
+                </ol>
+                <Tip tone="warn"><b>Wichtig:</b> Bei Garmin auch die <b>Wellness-Daten</b> (Schlaf, HRV, Ruhepuls) erlauben – sonst fehlt die Erholung.</Tip>
+              </Sub>
+              <Sub k="c" title="API-Schlüssel kopieren">
+                <ol>
+                  <li><a href="https://intervals.icu/settings" target="_blank" rel="noreferrer">intervals.icu/settings</a> öffnen und ganz nach unten zu <b>Entwicklereinstellungen</b> (Developer Settings) scrollen.</li>
+                  <li>Beim <b>API-Schlüssel</b> auf <b>Generieren</b> bzw. <b>Anzeigen</b> tippen und ihn kopieren.</li>
+                </ol>
+                <p className="note">Der Schlüssel ist wie ein Passwort: nur in Formstand einfügen. Die Athleten-ID (beginnt mit „i“) ist optional.</p>
+              </Sub>
+              <Sub k="d" title="In Formstand einfügen">
+                <p>Formstand → <b>Quellen</b> → bei intervals.icu den Schlüssel einfügen → <b>Verbinden</b>. Formstand lädt sofort die letzten 12 Monate, danach jeden Morgen automatisch die neuen Daten.</p>
+              </Sub>
+              <Tip><b>Strava</b> in intervals.icu bringt Formstand nichts: Einheiten, die nur über Strava kommen, darf intervals.icu nicht weitergeben. Darum Uhr und Zwift direkt verbinden. Für ältere Strava-Einheiten gibt es in intervals.icu „Import All Strava Data“.</Tip>
+            </Step>
+
+            <Step n="4" id="push" title="Morgen-Erinnerung einschalten" time="30 Sekunden">
+              <ol>
+                <li>Formstand <b>über das Symbol</b> auf dem Home-Bildschirm öffnen (auf dem iPhone geht Push nur so).</li>
+                <li>Oben auf deinen Namen → <b>Konto</b> → <b>Erinnerung auf diesem Gerät aktivieren</b> → Mitteilungen erlauben.</li>
+                <li>Mit <b>Test senden</b> prüfen. Ab morgen kommt gegen 7 Uhr die Erinnerung mit dem Vorschlag des Tages.</li>
+              </ol>
+            </Step>
+
+            <h2 className="g-part">Loslegen</h2>
+
+            <Step n="5" id="ziele" title="Ziele, Wettkämpfe und Schwächen" time="3 Minuten">
+              <Sub k="1" title="Ziele & Plan ausfüllen">
+                <ol>
+                  <li><b>Hauptziel</b> wählen: Leistung, Form halten, Abnehmen, Muskelaufbau oder Gesundheit.</li>
+                  <li>Bis zu 4 <b>Schwächen</b> antippen und die wichtigste festlegen.</li>
+                  <li><b>Trainingstage</b>, <b>Stunden pro Woche</b> und den <b>Tag für die lange Einheit</b> eintragen → Speichern.</li>
+                </ol>
+              </Sub>
+              <Sub k="2" title="Wettkampf suchen">
+                <p>Namen ins Suchfeld, z. B. „ATHX St. Gallen“ → <b>Suchen</b>. Formstand findet Datum, Format und Kategorien und fragt nach, welche du startest. Dann die Priorität wählen: <b>A</b> = Saisonhöhepunkt mit Tapering, <b>B</b> = wichtig, <b>C</b> = läuft als Training mit.</p>
+              </Sub>
+              <Sub k="3" title="Woche an dein Leben anpassen">
+                <p>Formstand schlägt die Woche vor – bei jedem Tag auf <b>Anpassen</b>: anders trainieren (z. B. Ausfahrt mit Buddy), mit anderem Tag tauschen, nur begrenzt Zeit oder Ruhetag. Mit <b>jede Woche so</b> wird es ein fester Termin. Verpasste harte Einheiten verschiebt Formstand selbst.</p>
+              </Sub>
+            </Step>
+
+            <Step n="6" id="koerper" title="Tests, Profil und Körper" time="nach Bedarf">
+              <div className="g-two">
+                <Sub title="Leistungstests"><p><b>Eingaben → Leistungstest:</b> FTP (z. B. Zwift Ramp Test), Schwellenpuls, CSS fürs Schwimmen. Daraus werden Watt-, Puls- und Pace-Vorgaben.</p></Sub>
+                <Sub title="Trainingsprofil"><p><b>Konto → Trainingsprofil:</b> Sportart, Gewicht und Jahrgang. Das Gewicht nimmt Formstand sonst automatisch aus Waage oder InBody.</p></Sub>
+              </div>
+              <Sub title="Körper">
+                <p>InBody-Auswertung (PDF oder Foto) und Körperfotos im selben Feld hochladen – Formstand erkennt selbst, was es ist, liest InBody-Werte aus und ordnet Fotos nach Pose. Unter <b>Körperentwicklung</b> stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich.</p>
+              </Sub>
+              <Tip>Körperfotos alle 2–4 Wochen, morgens nüchtern, gleiches Licht und gleicher Abstand.</Tip>
+            </Step>
+
+            <Step n="7" id="taeglich" title="Jeden Tag" time="10 Sekunden">
+              <div className="g-day">
+                <div><span>Morgens</span><p>Uhr synchronisieren, in Formstand einchecken (Energie, Motivation, Stress, Muskelkater, Zeit) und die <b>Entscheidung für heute</b> lesen.</p></div>
+                <div><span>Nach dem Training</span><p>Bei <b>Wie hart war's?</b> die Anstrengung antippen.</p></div>
+                <div><span>Einflussfaktoren</span><p>Alkohol (Gläser), spätes Essen, Stress, Sauna, Mobility … antippen – auch rückwirkend für jedes Datum. Formstand lernt daraus, wie du am Morgen danach reagierst.</p></div>
+              </div>
+            </Step>
+
+            <h2 className="g-part">Optional</h2>
+
+            <Step n="A" id="historie" title="Die ganze Garmin-Historie" time="5 Minuten + Wartezeit">
+              <p>intervals.icu liefert die letzten Monate. Für Jahre an Daten:</p>
+              <ol>
+                <li>Am Computer auf <a href="https://connect.garmin.com" target="_blank" rel="noreferrer">connect.garmin.com</a> → Profilbild → <b>Kontoeinstellungen</b> → <b>Datenverwaltung</b> → <b>Daten exportieren</b>.</li>
+                <li>Garmin schickt nach Stunden bis Tagen einen Link per E-Mail → ZIP herunterladen.</li>
+                <li>Formstand → <b>Quellen → Weitere Verbindungen → Garmin-Datenexport</b> → ZIP auswählen.</li>
+              </ol>
+            </Step>
+
+            <Step n="B" id="strava" title="Strava oder WHOOP direkt" time="1 Minute">
+              <ul>
+                <li><b>Strava</b> nur, wenn Workouts ausschliesslich dort landen: Quellen → Weitere Verbindungen → <b>Mit Strava verbinden</b>.</li>
+                <li><b>WHOOP direkt</b> liefert zusätzlich Strain und Recovery – nicht nötig, wenn WHOOP schon in intervals.icu hängt.</li>
+              </ul>
+              <Tip>Steht „noch nicht freigeschaltet“, muss der Admin das einmalig erledigen. Doppelte Einheiten erkennt Formstand und zählt sie nur einmal.</Tip>
+            </Step>
+
+            <section className="g-card g-faq" id="hilfe">
+              <h2>Häufige Fragen</h2>
+              {[
+                ["intervals.icu lässt sich nicht verbinden", "API-Schlüssel ohne Leerzeichen kopieren; die Athleten-ID leer lassen oder mit „i“ am Anfang eingeben. Notfalls in intervals.icu einen neuen Schlüssel erzeugen."],
+                ["Einheiten sind da, aber keine Erholung/HRV", "In intervals.icu bei der Garmin-Verbindung die Wellness-Daten erlauben. Die Uhr nachts tragen; Garmin braucht für den HRV-Status rund drei Wochen."],
+                ["Die Werte von heute fehlen", "Garmin-App öffnen und synchronisieren, kurz warten, dann in Formstand unter Quellen „Jetzt abgleichen“."],
+                ["Keine Mitteilungen auf dem iPhone", "Formstand muss als Symbol auf dem Home-Bildschirm installiert und von dort geöffnet sein (iOS 16.4 oder neuer). In den iPhone-Einstellungen Mitteilungen für Formstand erlauben."],
+                ["Wer sieht meine Daten?", "Nur du, der Admin und ein Coach, dem du zugeordnet bist. Zugangsdaten zu anderen Diensten werden verschlüsselt gespeichert. Verbindungen lassen sich unter Quellen jederzeit trennen."],
+              ].map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
+            </section>
+
+            <details className="g-card g-admin" id="admin">
+              <summary><h2>Für den Admin – einmalig</h2><span className="note">Strava, WHOOP, KI, Leute einladen</span></summary>
+              <ul>
+                <li><b>Strava freischalten:</b> auf <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer">strava.com/settings/api</a> eine App anlegen (Website {base}, <b>Authorization Callback Domain: <span className="num">{host}</span></b>). Client ID und Secret unter <b>Admin → Schnittstellen</b> eintragen.</li>
+                <li><b>WHOOP freischalten:</b> auf <a href="https://developer.whoop.com" target="_blank" rel="noreferrer">developer.whoop.com</a> eine App anlegen, Redirect-URL <span className="num">{base}/api/oauth/whoop</span>, alle read-Scopes und offline aktivieren. Client ID/Secret im Admin eintragen.</li>
+                <li><b>KI (optional):</b> Claude-API-Schlüssel in Vercel als Umgebungsvariable <span className="num">ANTHROPIC_API_KEY</span> (sensitive), Modelle und Monatslimit unter Admin → Schnittstellen.</li>
+                <li><b>Leute einladen:</b> Im Admin steht ein fertiger Einladungstext mit allen Links zum Kopieren.</li>
+              </ul>
+            </details>
+          </div>
+        </div>
       </main>
     </>
   );
