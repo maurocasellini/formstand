@@ -4,7 +4,8 @@ import ActionForm from "@/components/ActionForm";
 import PushToggle from "@/components/PushToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import { vapid } from "@/lib/push";
-import { savePushSub, deletePushSub, testPush } from "../../actions-data";
+import { savePushSub, deletePushSub, testPush, updateProfile } from "../../actions-data";
+import { SPORTS } from "@/lib/catalog";
 
 export default async function Konto({ searchParams }) {
   const sp = await searchParams;
@@ -30,9 +31,23 @@ export default async function Konto({ searchParams }) {
             <label className="f">Name<input type="text" name="name" defaultValue={me.name} required /></label>
             <label className="f">E-Mail<input type="email" name="email" defaultValue={me.email || ""} /></label>
           </ActionForm>
-          <p className="note">Sportart, Gewicht und Jahrgang findest du unter „Eingaben“.</p>
         </div>
       </section>
+      {!me.demo && (
+      <section className="panel">
+        <h2>Trainingsprofil</h2>
+        <ActionForm action={updateProfile} reset={false}>
+          <label className="f">Sportart<select name="sport" defaultValue={me.sport || ""}><option value="">–</option>{SPORTS.map((s) => <option key={s}>{s}</option>)}</select></label>
+          <label className="f">Gewicht kg<input type="number" name="weight_kg" step="0.1" min="30" max="200" defaultValue={me.weight_kg ?? ""} /></label>
+          <label className="f">Jahrgang<input type="number" name="birth_year" min="1930" max="2020" defaultValue={me.birth_year ?? ""} /></label>
+        </ActionForm>
+        <ul className="note" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
+          <li><b>Sportart</b> bestimmt, welche Einheiten der Plan vorschlägt (Rad, Laufen, Triathlon, Kraft/HYROX …), solange kein Wettkampf eingetragen ist.</li>
+          <li><b>Gewicht</b> braucht Formstand für Watt pro kg, Kalorien und Kohlenhydrate pro kg. Gerechnet wird automatisch mit dem neusten Messwert der letzten 14 Tage (Waage über intervals.icu, InBody, eigene Einträge) – dieses Feld gilt nur, wenn keiner vorliegt.</li>
+          <li><b>Jahrgang</b> fliesst in die Einordnung ein (z. B. Erholungsbedarf) und wird der KI als Alter mitgegeben.</li>
+        </ul>
+      </section>
+      )}
       {!me.demo && (
         <section className="panel">
           <h2>Morgen-Erinnerung</h2>

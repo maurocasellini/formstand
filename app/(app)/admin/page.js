@@ -36,7 +36,16 @@ export default async function Admin() {
   const coaches = users.filter((u) => u.role === "coach" || u.role === "admin");
   return (
     <>
-      <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Admin</h1><p>Konten, Rollen, Schnittstellen und Systemstatus. Alles hier, nichts in Vercel.</p></div></div>
+      <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Admin</h1><p>Konten, Rollen, Schnittstellen und Systemstatus. Nur für Admins sichtbar – Sportler sehen diese Seite und die Daten anderer nicht.</p></div></div>
+      {(() => {
+        const seed = users.find((u) => u.username === "ADMIN" && u.id !== me.id);
+        return seed ? (
+          <div className="notice warn" style={{ display: "grid", gap: 8 }}>
+            <span><b>Start-Konto „ADMIN“ existiert noch.</b> {seed.must_change ? "Es hat noch das Startpasswort und ist für die Anmeldung gesperrt, solange du ein eigenes Admin-Konto hast." : "Es hat ein eigenes Passwort und volle Admin-Rechte."} Am sichersten: löschen.</span>
+            <form action={deleteUser} className="btnrow"><input type="hidden" name="id" value={seed.id} /><input type="text" name="confirm" placeholder="LÖSCHEN tippen" style={{ height: 32, width: 140 }} aria-label="Zum Bestätigen LÖSCHEN eintippen" /><button className="btn danger sm" type="submit">ADMIN-Konto löschen</button></form>
+          </div>
+        ) : null;
+      })()}
 
       <section className="panel">
         <div className="panel-head"><h2>Schnittstellen freischalten</h2><span className="note">einmalig pro App, danach verbindet jede Person ihr eigenes Konto</span></div>

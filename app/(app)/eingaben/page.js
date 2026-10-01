@@ -70,15 +70,7 @@ export default async function Eingaben({ demo } = {}) {
             <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
             <label className="f">Menge<input type="number" name="value" min="1" max="20" defaultValue="1" /></label>
           </ActionForm>
-          <p className="note">Wie dein Körper am Morgen danach reagiert, steht unten unter „Deine Trigger“.</p>
-        </div>
-        <div className="panel">
-          <h2 id="profil">Profil</h2>
-          <ActionForm action={updateProfile} reset={false}>
-            <label className="f">Sportart<select name="sport" defaultValue={subject.sport || ""}><option value="">–</option>{SPORTS.map((s) => <option key={s}>{s}</option>)}</select></label>
-            <label className="f">Gewicht kg<input type="number" name="weight_kg" step="0.1" defaultValue={subject.weight_kg ?? ""} /></label>
-            <label className="f">Jahrgang<input type="number" name="birth_year" min="1930" max="2020" defaultValue={subject.birth_year ?? ""} /></label>
-          </ActionForm>
+          <p className="note">Wie du am Morgen danach reagierst, steht unten unter „Deine Reaktion nach …“.</p>
         </div>
       </section>
 

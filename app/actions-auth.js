@@ -6,6 +6,9 @@ import { createSession, destroySession, requireUser } from "@/lib/auth";
 export async function login(_prev, form) {
   const u = await repo.findUserByLogin(form.get("login"));
   if (!u || !(await repo.checkPassword(form.get("password"), u.password_hash))) return { error: "Benutzername oder Passwort stimmt nicht." };
+  // Start-Konto ADMIN mit Startpasswort: gesperrt, sobald ein anderer Admin ein eigenes Passwort hat
+  if (u.username === "ADMIN" && u.must_change && (await repo.listUsers()).some((x) => x.id !== u.id && x.role === "admin" && !x.must_change))
+    return { error: "Dieses Start-Konto ist aus Sicherheitsgründen gesperrt. Bitte mit deinem eigenen Admin-Konto anmelden." };
   await createSession(u);
   redirect(u.must_change ? "/konto?neu=1" : "/heute");
 }
