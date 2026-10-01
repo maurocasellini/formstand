@@ -4,6 +4,11 @@ import * as repo from "@/lib/repo";
 import { appConfigured } from "@/lib/apps";
 import { PROVIDERS } from "@/lib/providers";
 import { baseUrl } from "@/lib/baseurl";
+import { buildSeries, todayIso, addDays } from "@/lib/metrics";
+
+const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
+const r1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1));
+const r0 = (v) => (v == null ? "–" : Math.round(v));
 import { syncNow, disconnect, loadDemo, removeDemo, fullResync, connectIntervals } from "../../actions-data";
 import ActionForm from "@/components/ActionForm";
 import GarminImport from "@/components/GarminImport";
@@ -27,6 +32,9 @@ export default async function Quellen({ searchParams }) {
   const readyMap = { intervals: true, strava: await appConfigured("strava"), whoop: await appConfigured("whoop") };
   const base = await baseUrl();
   const by = Object.fromEntries(conns.map((c) => [c.provider, c]));
+  const today = todayIso();
+  const series = await buildSeries(subject.id, addDays(today, -40), today);
+  const T = series.all[series.all.length - 1], recP = Object.keys(T?.prov || {});
   const iv = by.intervals;
   const extraOpen = Boolean(by.strava || by.whoop);
   return (
@@ -95,6 +103,20 @@ export default async function Quellen({ searchParams }) {
         </div>
         <p className="note">Nur nötig für Jahre vor intervals.icu oder für Body Battery und Stress. Übernommen werden u. a. Schlafphasen, Body Battery, Stress, HRV, Ruhepuls, SpO2, Training Readiness, VO2max, Gewicht und alle Workouts.</p>
       </details>
+      {recP.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Quellenabgleich heute</h2><span className="note">Jedes Gerät misst anders. Formstand rechnet jedes gegen seine eigene Baseline und kombiniert dann („Bereinigt“).</span></div>
+          <div className="tbl-wrap"><table>
+            <thead><tr><th>Kennzahl</th>{recP.map((p) => <th key={p} className="r">{PNAME[p] || p}</th>)}<th className="r">Bereinigt</th></tr></thead>
+            <tbody>
+              {[["Recovery", "recovery", r0, "", T.scoreObj], ["HRV", "hrv", r0, " ms", T.hrv], ["Ruhepuls", "rhr", r0, " bpm", T.rhr], ["Schlaf", "sleep", r1, " h", T.sleep]].map(([lbl, k, f, u, clean]) => (
+                <tr key={k}><td>{lbl}</td>{recP.map((p) => <td key={p} className="r num">{T.prov[p][k] == null ? "–" : f(T.prov[p][k]) + u}</td>)}<td className="r num clean">{clean == null ? "–" : f(clean) + u}</td></tr>
+              ))}
+            </tbody>
+          </table></div>
+        </section>
+      )}
+
       <section className="grid2e">
         <div className="panel">
           <h2>Neu laden</h2>

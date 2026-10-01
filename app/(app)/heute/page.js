@@ -2,6 +2,7 @@ import Link from "next/link";
 import { pageContext } from "@/lib/subject";
 import QuickLinks from "@/components/QuickLinks";
 import { learnedText } from "@/lib/learn";
+import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
@@ -81,7 +82,7 @@ function Decision({ d, a }) {
 
 // Wie bin ich drauf? Erholung (nur Messwerte der Nacht) · Bereitschaft (heute belastbar, inkl. Check-in) · fünf Bereiche
 const sg = (v, d = 0) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`;
-function Status({ T, st, cx }) {
+function Status({ T, st, cx, ls }) {
   const m = Object.fromEntries((cx || []).map((x) => [x.k, x]));
   const S = st?.states;
   const parts = S ? [["Herz-Kreislauf", S.cardio.value], ["Beine", S.muscle.regions.legs.value], ["Oberkörper", S.muscle.regions.upper.value], ["Schlaf", S.sleep.value], ["Stress & Energie", S.stress.value]] : [];
@@ -100,6 +101,13 @@ function Status({ T, st, cx }) {
       <div className="parts">{parts.map(([n, v]) => (
         <div key={n} className="drv"><span>{n}</span><div className="meter m2"><i style={{ width: `${v ?? 0}%`, background: `var(--${stateColor(v)})` }} /></div><span className="num" style={{ textAlign: "right", fontWeight: 600 }}>{v ?? "–"}</span></div>
       ))}</div>
+      {ls && (
+        <div className="loads"><span className="lbl">Belastung 7 Tage vs. dein Schnitt</span>
+          {[["Herz-Kreislauf", ls.cardio], ["Beine", ls.muscle.legs], ["Oberkörper", ls.muscle.upper], ["Volumen", ls.hours, `${ls.hours.w7.toFixed(1)} h`]].filter(([, x]) => x.avg || x.w7).map(([n, x, extra]) => (
+            <span key={n} className={`ld ${x.ratio == null ? "" : x.ratio > 1.4 ? "hi" : x.ratio < 0.7 ? "lo" : ""}`} title={ratioWord(x.ratio)}><em>{n}</em>{extra ? `${extra} · ` : ""}{x.ratio == null ? "neu" : `${x.ratio.toFixed(1)}×`}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -184,7 +192,7 @@ export default async function Heute({ demo } = {}) {
         <section className="home2">
           <div className="panel status">
             <div className="panel-head"><h2>Wie bin ich drauf?</h2><span className="note">{recP.length ? `aus ${recP.map((p) => PNAME[p] || p).join(" + ")}` : ""}{ck ? " · mit Check-in" : ""}</span></div>
-            <Status T={T} st={st} cx={ctxv} />
+            <Status T={T} st={st} cx={ctxv} ls={loadSplit(all)} />
             {st && (
             <div className="why">
               <p><span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span> · {st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
@@ -273,7 +281,7 @@ export default async function Heute({ demo } = {}) {
       })()}
 
       <details className="panel more-data">
-        <summary><h2>Mehr Daten von heute</h2><span className="note">Werte im Kontext, Nacht, Verlauf, Einheiten, Quellen</span></summary>
+        <summary><h2>Mehr Daten von heute</h2><span className="note">Werte im Kontext, Nacht, Verlauf, Einheiten</span></summary>
       {ctxv.length > 0 && (
         <section className="panel">
           <div className="panel-head"><h2>Deine Werte im Kontext</h2><span className="note">verglichen mit dir selbst: Ø der letzten 28 Tage und Rang in 12 Monaten</span></div>
@@ -340,19 +348,6 @@ export default async function Heute({ demo } = {}) {
           </table></div>
         ) : <div className="empty">Noch keine Workouts.</div>}
       </section>
-      {recP.length > 0 && (
-        <section className="panel">
-          <div className="panel-head"><h2>Quellenabgleich heute</h2><span className="note">Jedes Gerät misst anders. Gerechnet wird mit „Bereinigt“.</span></div>
-          <div className="tbl-wrap"><table>
-            <thead><tr><th>Kennzahl</th>{recP.map((p) => <th key={p} className="r">{PNAME[p] || p}</th>)}<th className="r">Bereinigt</th></tr></thead>
-            <tbody>
-              {[["Recovery", "recovery", r0, "", T.score], ["HRV", "hrv", r0, " ms", T.hrv], ["Ruhepuls", "rhr", r0, " bpm", T.rhr], ["Schlaf", "sleep", r1, " h", T.sleep]].map(([lbl, k, f, u, clean]) => (
-                <tr key={k}><td>{lbl}</td>{recP.map((p) => <td key={p} className="r num">{T.prov[p][k] == null ? "–" : f(T.prov[p][k]) + u}</td>)}<td className="r num clean">{clean == null ? "–" : f(clean) + u}</td></tr>
-              ))}
-            </tbody>
-          </table></div>
-        </section>
-      )}
       </details>
 
       <section className="panel">
