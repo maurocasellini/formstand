@@ -3,14 +3,19 @@ import { cookies } from "next/headers";
 import { currentUser, resolveSubject } from "@/lib/auth";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
+import { DEMO_USER } from "@/lib/demodata";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
-  const viewer = await currentUser();
-  if (!viewer) return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
-  const subject = await resolveSubject(viewer, (await cookies()).get("fs_subject")?.value);
   const u = new URL(req.url);
+  let subject;
+  if (u.searchParams.get("demo") === "1") subject = { ...DEMO_USER }; // öffentliche Demo, nur Beispieldaten
+  else {
+    const viewer = await currentUser();
+    if (!viewer) return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+    subject = await resolveSubject(viewer, (await cookies()).get("fs_subject")?.value);
+  }
   const today = todayIso();
   let to = u.searchParams.get("to") || today, from = u.searchParams.get("from") || addDays(today, -364);
   if (from > to) [from, to] = [to, from];

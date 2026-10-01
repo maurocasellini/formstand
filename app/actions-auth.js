@@ -1,10 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repo";
-import crypto from "node:crypto";
 import { createSession, destroySession, requireUser } from "@/lib/auth";
-import { seedDemo } from "@/lib/demo";
-import { todayIso } from "@/lib/metrics";
 
 export async function login(_prev, form) {
   const u = await repo.findUserByLogin(form.get("login"));
@@ -61,31 +58,4 @@ export async function updateAccount(_prev, form) {
 export async function logout() {
   await destroySession();
   redirect("/login");
-}
-
-// Demo: gemeinsames Konto mit Beispieldaten, nur zum Anschauen. Daten werden täglich frisch erzeugt.
-export async function startDemo() {
-  let u = (await repo.listUsers()).find((x) => x.demo);
-  if (!u) {
-    try { u = await repo.createUser({ username: "demo-konto", name: "Alex Demo", password: crypto.randomBytes(24).toString("hex"), role: "athlete", sport: "Rad & Laufen" }); }
-    catch { u = await repo.findUserByLogin("demo-konto"); }
-    u = await repo.updateUser(u.id, { demo: true, weight_kg: 76, birth_year: 1990 });
-  }
-  const today = todayIso();
-  const DEMO_VERSION = 7; // erhöhen, wenn sich die Beispieldaten ändern
-  if (u.demo_day !== today || u.demo_ver !== DEMO_VERSION) {
-    await seedDemo(u.id, 76, { rich: true });
-    const plus = (n) => { const d = new Date(today + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-    await repo.updateGoals(u.id, () => ({ ...repo.GOALS_DEFAULT, focus: "performance", mainWeakness: "klettern", weaknesses: ["schwelle", "kraft_beine", "schwimmen"], targetWeight: 74, rate: 0.5, daysPerWeek: 5, hoursPerWeek: 8, longDay: 6,
-      note: "Am Berg verliere ich ab der Hälfte den Anschluss.", updated_at: new Date().toISOString(),
-      events: [{ id: "demo-b", name: "Herbstlauf 10 km (Beispiel)", date: plus(23), type: "lauf_10k", priority: "B", target: "unter 45 min" }, { id: "demo-a", name: "Alpen-Radmarathon (Beispiel)", date: plus(66), type: "rad_marathon", priority: "A", target: "unter 6 h" }] }));
-    u = await repo.updateUser(u.id, { demo_day: today, demo_ver: DEMO_VERSION });
-  }
-  await createSession(u);
-  redirect("/heute");
-}
-
-export async function leaveDemo() {
-  await destroySession();
-  redirect("/register");
 }

@@ -300,3 +300,7 @@ td.wrap{white-space:normal}
 .cmp input[type=range]{width:100%;accent-color:var(--accent)}
 .pcmp{display:grid;gap:10px;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
 .pres{display:grid;gap:8px;align-content:start}
+/* Schreibschutz (Demo) */
+.ro-fs{display:contents;border:0;margin:0;padding:0;min-width:0}
+.demo-ro button.x{display:none}
+.demo-ro fieldset:disabled .btn{opacity:.45;cursor:not-allowed}

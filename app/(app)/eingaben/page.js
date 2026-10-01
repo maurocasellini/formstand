@@ -1,4 +1,4 @@
-import { viewerAndSubject } from "@/lib/subject";
+import { pageContext } from "@/lib/subject";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
@@ -11,8 +11,8 @@ const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trig
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 
-export default async function Eingaben() {
-  const { subject } = await viewerAndSubject();
+export default async function Eingaben({ demo } = {}) {
+  const { subject, viewer, base } = await pageContext(demo);
   const today = todayIso();
   const allMan = (await repo.getManual(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
   const entries = allMan.slice(0, 60);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Dashboard from "@/components/Dashboard";
-import { viewerAndSubject } from "@/lib/subject";
+import { pageContext } from "@/lib/subject";
 import { todayModel } from "@/lib/coach";
 import { changes } from "@/lib/insights";
 import { review, summarize } from "@/lib/adherence";
@@ -12,8 +12,8 @@ export const maxDuration = 60;
 const arrow = (c) => (c.val == null ? "★" : c.sig ? (c.val > 0 ? "↑" : "↓") : "→");
 const tone = (c) => (!c.sig ? "flat" : c.warn ? "bad" : c.dir === 0 || c.val == null ? "neutral" : c.dir * c.val > 0 ? "good" : "bad");
 
-export default async function Entwicklung() {
-  const { subject } = await viewerAndSubject();
+export default async function Entwicklung({ demo } = {}) {
+  const { subject, base } = await pageContext(demo);
   const m = await todayModel(subject.id);
   const manual = await repo.getManual(subject.id);
   const ch = changes(m.all, { focus: m.goals.focus, manual });
@@ -28,7 +28,7 @@ export default async function Entwicklung() {
           <h1>Entwicklung</h1>
           <p>Erst die Erkenntnisse, dann die Daten. Verglichen wird immer mit dir selbst.</p>
         </div>
-        {m.phase?.event && m.phase.daysTo > 0 && <Link href="/ziele" className="phasebox"><span className="tag on">{m.phase.label}</span><b>{m.phase.daysTo} Tage bis {m.phase.event.name}</b></Link>}
+        {m.phase?.event && m.phase.daysTo > 0 && <Link href={`${base}/ziele`} className="phasebox"><span className="tag on">{m.phase.label}</span><b>{m.phase.daysTo} Tage bis {m.phase.event.name}</b></Link>}
       </div>
 
       <section className="panel">
@@ -48,13 +48,13 @@ export default async function Entwicklung() {
         ) : <div className="empty">Für Trends braucht es gut 4 Monate Daten.</div>}
         {(sum.adherence != null || trig.length > 0) && (
           <div className="learn">
-            {sum.adherence != null && <p><b>Plan-Treue 4 Wochen: {sum.adherence} %</b>{sum.followedNext != null ? ` · Wenn du der Empfehlung gefolgt bist, war die Tagesform am Folgetag im Schnitt ${Math.abs(Math.round(sum.followedNext - sum.otherNext))} ${Math.abs(Math.round(sum.followedNext - sum.otherNext)) === 1 ? "Punkt" : "Punkte"} ${sum.followedNext >= sum.otherNext ? "höher" : "tiefer"}.` : ""} <Link href="/ziele">Details</Link></p>}
+            {sum.adherence != null && <p><b>Plan-Treue 4 Wochen: {sum.adherence} %</b>{sum.followedNext != null ? ` · Wenn du der Empfehlung gefolgt bist, war die Tagesform am Folgetag im Schnitt ${Math.abs(Math.round(sum.followedNext - sum.otherNext))} ${Math.abs(Math.round(sum.followedNext - sum.otherNext)) === 1 ? "Punkt" : "Punkte"} ${sum.followedNext >= sum.otherNext ? "höher" : "tiefer"}.` : ""} <Link href={`${base}/ziele`}>Details</Link></p>}
             {trig.map((t) => <p key={t}>{t}</p>)}
           </div>
         )}
       </section>
 
-      <Dashboard />
+      <Dashboard demo={Boolean(demo)} />
     </>
   );
 }

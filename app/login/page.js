@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { hasStore } from "@/lib/store";
 import { currentUser } from "@/lib/auth";
 import { getSettings, listUsers } from "@/lib/repo";
-import { login, startDemo } from "../actions-auth";
+import { login } from "../actions-auth";
 import AuthForm from "@/components/AuthForm";
 import Logo from "@/components/Logo";
 
@@ -25,7 +25,7 @@ export default async function Login() {
         ]} />
         <div className="demo-cta">
           <div><b>Erst mal reinschauen?</b><p className="note">Demo mit zwei Jahren Beispieldaten: Garmin, WHOOP, Strava, InBody, Tests und KI-Empfehlung.</p></div>
-          <form action={startDemo}><button className="btn ghost" type="submit">Demo ansehen</button></form>
+          <Link className="btn ghost" href="/demo">Demo ansehen</Link>
         </div>
         {s.registrationOpen ? <p className="note">Noch kein Konto? <Link href="/register">Jetzt registrieren</Link></p> : <p className="note">Konten legt der Admin an.</p>}
       </div>

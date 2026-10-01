@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { viewerAndSubject } from "@/lib/subject";
+import { pageContext } from "@/lib/subject";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
@@ -77,8 +77,8 @@ function Decision({ d, a }) {
   );
 }
 
-export default async function Heute() {
-  const { subject, viewer } = await viewerAndSubject();
+export default async function Heute({ demo } = {}) {
+  const { subject, viewer, base } = await pageContext(demo);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday } = await todayModel(subject.id);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
@@ -105,11 +105,11 @@ export default async function Heute() {
         <div style={{ display: "grid", gap: 4 }}>
           <span className="note">{new Date(today + "T12:00:00Z").toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
           <h1>Hallo, {subject.name.split(" ")[0]}</h1>
-          {phase && <Link href="/ziele" className="phaseline"><span className="tag on">{phase.label}</span>{phase.event && phase.daysTo > 0 ? <span>noch <b>{phase.daysTo} Tage</b> bis {phase.event.name}</span> : null}</Link>}
+          {phase && <Link href={`${base}/ziele`} className="phaseline"><span className="tag on">{phase.label}</span>{phase.event && phase.daysTo > 0 ? <span>noch <b>{phase.daysTo} Tage</b> bis {phase.event.name}</span> : null}</Link>}
         </div>
         <div className="btnrow">
           {conns.map((c) => <span key={c.provider} className="tag on">{PNAME[c.provider] || c.provider}</span>)}
-          <Link className="btn ghost sm" href="/quellen">Quellen verwalten</Link>
+          <Link className="btn ghost sm" href={base ? "/register" : "/quellen"}>Quellen verwalten</Link>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export default async function Heute() {
           <h2>Noch keine Daten</h2>
           <p className="muted">Verbinde intervals.icu, Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
           <div className="btnrow">
-            <Link className="btn" href="/quellen">Quellen verbinden</Link>
+            <Link className="btn" href={base ? "/register" : "/quellen"}>Quellen verbinden</Link>
             <form action={loadDemo}><button className="btn ghost" type="submit">Beispieldaten laden</button></form>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default async function Heute() {
           <span>Gemacht: <b>{ACT_LABEL[yesterday.act.kind]}</b>{yesterday.act.min ? ` · ${yesterday.act.min} min` : ""}</span>
           <span className={`tag ${{ gefolgt: "on", teilweise: "wait", anders: "err", ausgelassen: "" }[yesterday.status]}`}>{{ gefolgt: "✓ gefolgt", teilweise: "~ teilweise", anders: "↑ härter als empfohlen", ausgelassen: "– ausgelassen" }[yesterday.status]}</span>
           {yesterday.scoreThen != null && yesterday.scoreNow != null && <span className="note">Tagesform {yesterday.scoreThen} → {yesterday.scoreNow} ({yesterday.scoreNow - yesterday.scoreThen >= 0 ? "+" : ""}{yesterday.scoreNow - yesterday.scoreThen})</span>}
-          <Link href="/ziele" className="note">Verlauf →</Link>
+          <Link href={`${base}/ziele`} className="note">Verlauf →</Link>
         </section>
       )}
 

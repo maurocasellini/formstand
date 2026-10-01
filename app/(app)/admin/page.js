@@ -17,6 +17,8 @@ const APPS = [
 
 export default async function Admin() {
   const me = await requireAdmin();
+  // Das frühere gemeinsame Demo-Konto ist durch /demo ersetzt: einmalig aufräumen
+  for (const u of (await repo.listUsers()).filter((x) => x.demo)) await repo.deleteUser(u.id);
   const [users, pairs, runs, settings, base] = await Promise.all([repo.listUsers(), repo.listPairs(), repo.listRuns(), repo.getSettings(), baseUrl()]);
   const stats = await Promise.all(users.map(async (u) => {
     const [conns, acts, man, media] = await Promise.all([repo.getConnections(u.id), repo.getActivities(u.id), repo.getManual(u.id), repo.getMedia(u.id)]);

@@ -46,7 +46,7 @@ function Seg({ value, onChange, options, small }) {
 }
 const Svg = ({ html }) => <div dangerouslySetInnerHTML={{ __html: html }} />;
 
-export default function Dashboard() {
+export default function Dashboard({ demo = false }) {
   const [range, setRange] = useState("jahr");
   const [group, setGroup] = useState("auto");
   const [heat, setHeat] = useState("load");
@@ -66,7 +66,7 @@ export default function Dashboard() {
   useEffect(() => {
     let off = false;
     setErr("");
-    fetch(`/api/dashboard?from=${from}&to=${to}`).then((r) => r.json()).then((j) => { if (off) return; if (j.error) setErr(j.error); else setData(j); }).catch(() => !off && setErr("Daten konnten nicht geladen werden."));
+    fetch(`/api/dashboard?${demo ? "demo=1&" : ""}from=${from}&to=${to}`).then((r) => r.json()).then((j) => { if (off) return; if (j.error) setErr(j.error); else setData(j); }).catch(() => !off && setErr("Daten konnten nicht geladen werden."));
     return () => { off = true; };
   }, [from, to]);
 

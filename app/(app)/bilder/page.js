@@ -1,4 +1,4 @@
-import { viewerAndSubject } from "@/lib/subject";
+import { pageContext } from "@/lib/subject";
 import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
 import { MEDIA_KINDS } from "@/lib/catalog";
@@ -16,9 +16,9 @@ const POSE = { front: "Front", side: "Seite", back: "Rücken" };
 const CHANGE_TONE = { definierter: "up", "weniger Fett": "up", "mehr Masse": "up", weicher: "down" };
 const d1 = (v) => (v == null ? "–" : Number(v).toFixed(1));
 
-export default async function Bilder({ searchParams }) {
+export default async function Bilder({ searchParams, demo } = {}) {
   const sp = await searchParams;
-  const { subject, viewer } = await viewerAndSubject();
+  const { subject, viewer, base } = await pageContext(demo);
   const media = (await repo.getMedia(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
   const blobOk = filesReady;
   const ai = await aiReady();
@@ -78,10 +78,10 @@ export default async function Bilder({ searchParams }) {
           {photos.length > 0 && (
             <div className="pcmp">
               <h3>Fotos vergleichen</h3>
-              <div className="btnrow">{poses.map((p) => <a key={p} className={`btn sm ${p === pose ? "" : "ghost"}`} href={`/bilder?pose=${p}`}>{POSE[p] || "Ohne Pose"}</a>)}</div>
+              <div className="btnrow">{poses.map((p) => <a key={p} className={`btn sm ${p === pose ? "" : "ghost"}`} href={`${base}/bilder?pose=${p}`}>{POSE[p] || "Ohne Pose"}</a>)}</div>
               {A && B ? (
                 <>
-                  <form className="form" method="get" action="/bilder">
+                  <form className="form" method="get" action={`${base}/bilder`}>
                     <input type="hidden" name="pose" value={pose} />
                     <label className="f">Vorher<select name="a" defaultValue={A.id}>{list.map((p) => <option key={p.id} value={p.id}>{fmt(p.day)}</option>)}</select></label>
                     <label className="f">Nachher<select name="b" defaultValue={B.id}>{list.map((p) => <option key={p.id} value={p.id}>{fmt(p.day)}</option>)}</select></label>

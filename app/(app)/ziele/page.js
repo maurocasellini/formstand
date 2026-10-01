@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { viewerAndSubject } from "@/lib/subject";
+import { pageContext } from "@/lib/subject";
 import { todayModel } from "@/lib/coach";
 import { weekPlan, mondayOf, DAYS, PHASES } from "@/lib/plan";
 import { review, summarize, ACT_LABEL } from "@/lib/adherence";
@@ -19,9 +19,9 @@ const TYPE = { rest: ["Ruhe", "none"], easy: ["Locker", "warn"], long: ["Lang", 
 const STATUS = { gefolgt: ["✓ gefolgt", "on"], teilweise: ["~ teilweise", "wait"], anders: ["↑ härter", "err"], ausgelassen: ["– ausgelassen", ""] };
 const DAYNAMES = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
-export default async function Ziele({ searchParams }) {
+export default async function Ziele({ searchParams, demo } = {}) {
   const sp = await searchParams;
-  const { subject, viewer } = await viewerAndSubject();
+  const { subject, viewer, base } = await pageContext(demo);
   const m = await todayModel(subject.id);
   const { goals, today, all, zones, decision, phase } = m;
   const week = sp?.w === "1" ? 1 : 0;
@@ -62,7 +62,7 @@ export default async function Ziele({ searchParams }) {
       <section className="panel">
         <div className="panel-head"><h2>Wochenplan</h2>
           <div className="btnrow"><span className="note">{plan.phase.label} · {plan.hours} h geplant</span>
-            {week === 0 ? <Link className="btn ghost sm" href="/ziele?w=1">Nächste Woche →</Link> : <Link className="btn ghost sm" href="/ziele">← Diese Woche</Link>}</div></div>
+            {week === 0 ? <Link className="btn ghost sm" href={`${base}/ziele?w=1`}>Nächste Woche →</Link> : <Link className="btn ghost sm" href={`${base}/ziele`}>← Diese Woche</Link>}</div></div>
         <div className="week">
           {plan.items.map((x) => {
             const isToday = x.day === today, changed = isToday && decision && decision.planned && decision.title !== x.title && decision.title !== `Heute: ${x.title}`;
