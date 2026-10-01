@@ -24,6 +24,7 @@ export default async function AppLayout({ children }) {
               <Link href="/konto" className="logo" style={{ gap: 8 }} title="Mein Konto"><span className="ava">{initials}</span>
               <span style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span></Link>
               <span className="role">{ROLE[viewer.role]}</span>
+              <Link className="btn ghost sm" href="/anleitung" title="Schritt-für-Schritt-Anleitung">Anleitung</Link>
               <form action={logout}><button className="btn ghost sm" type="submit">Abmelden</button></form>
             </div>
           </div>

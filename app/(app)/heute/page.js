@@ -79,12 +79,13 @@ function Decision({ d, a }) {
 
 export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
-  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday } = await todayModel(subject.id);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual } = await todayModel(subject.id);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
   const ck = T?.checkin || null;
   const unrated = activities.filter((a) => a.category !== "other" && !a.rpe && a.day >= addDays(today, -3)).slice(0, 4);
   const conns = await repo.getConnections(subject.id);
+  const pushOn = viewer.demo ? true : (await repo.getPushSubs(viewer.id)).length > 0;
   const todayTrig = (await repo.getManual(subject.id)).filter((e) => e.kind === "trigger" && e.day === today);
   const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
@@ -113,12 +114,35 @@ export default async function Heute({ demo } = {}) {
         </div>
       </div>
 
+      {!viewer.demo && subject.id === viewer.id && (() => {
+        const steps = [
+          ["Quelle verbunden", conns.length > 0, "/quellen", "/anleitung#garmin"],
+          ["Daten sind da", providers.length > 0 || activities.length > 0, "/quellen", "/anleitung#garmin"],
+          ["Einmal eingecheckt", manual.some((m) => m.kind === "checkin"), "/heute#checkin", "/anleitung#taeglich"],
+          ["Ziele & Schwächen gesetzt", hasGoals, "/ziele", "/anleitung#ziele"],
+          ["Morgen-Erinnerung an", pushOn, "/konto", "/anleitung#push"],
+          ["Leistungstest eingetragen", manual.some((m) => m.kind === "test"), "/eingaben", "/anleitung#tests"],
+        ];
+        const done = steps.filter((x) => x[1]).length;
+        if (done === steps.length) return null;
+        return (
+          <section className="panel onb">
+            <div className="panel-head"><h2>Erste Schritte · {done}/{steps.length}</h2><Link className="note" href="/anleitung">Ganze Anleitung →</Link></div>
+            <div className="bar"><i style={{ width: `${(done / steps.length) * 100}%` }} /></div>
+            <ol className="onb-l">{steps.map(([t, ok, href, help]) => (
+              <li key={t} className={ok ? "ok" : ""}><span className="chk">{ok ? "✓" : ""}</span>{ok ? <span>{t}</span> : <Link href={href}>{t}</Link>}{!ok && <Link className="note" href={help}>wie?</Link>}</li>
+            ))}</ol>
+          </section>
+        );
+      })()}
+
       {!hasAny && (
         <div className="panel">
           <h2>Noch keine Daten</h2>
           <p className="muted">Verbinde intervals.icu, Strava oder WHOOP unter „Quellen“. Zum Ausprobieren kannst du Beispieldaten laden, sie lassen sich jederzeit wieder löschen.</p>
           <div className="btnrow">
             <Link className="btn" href={base ? "/register" : "/quellen"}>Quellen verbinden</Link>
+            {!base && <Link className="btn ghost" href="/anleitung#garmin">Schritt-für-Schritt-Anleitung</Link>}
             <form action={loadDemo}><button className="btn ghost" type="submit">Beispieldaten laden</button></form>
           </div>
         </div>

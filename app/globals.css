@@ -304,3 +304,38 @@ td.wrap{white-space:normal}
 .ro-fs{display:contents;border:0;margin:0;padding:0;min-width:0}
 .demo-ro button.x{display:none}
 .demo-ro fieldset:disabled .btn{opacity:.45;cursor:not-allowed}
+/* Anleitung */
+.guide{max-width:880px;overflow-wrap:anywhere}
+.guide > *{min-width:0}
+.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:24px}
+@media (max-width:560px){.toc ol{columns:1}}
+.toc li{margin:3px 0}
+.step-h{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.step-h h2{margin:0;flex:1}
+.step-n{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;flex:none}
+.step-b{display:grid;gap:8px;line-height:1.6}
+.step-b ol,.step-b ul{margin:0;padding-left:20px;display:grid;gap:4px}
+.step-b h3{margin:6px 0 0}
+.step-b p{margin:0}
+.faq{display:grid;gap:4px;margin:0}
+.faq dt{font-weight:700;margin-top:8px}
+.faq dd{margin:0;color:var(--muted)}
+.onb .bar{margin-bottom:4px}
+.onb-l{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 16px}
+.onb-l li{display:flex;gap:8px;align-items:center;font-size:14px}
+.onb-l li.ok{color:var(--muted)}
+.onb-l .chk{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line2);font-size:12px;font-weight:700;flex:none}
+.onb-l li.ok .chk{background:var(--good);border-color:var(--good);color:#fff}
+.copybox{display:grid;gap:8px}
+.copybox textarea{font:inherit;font-size:13px;background:var(--sunk);border:1px solid transparent;border-radius:10px;padding:10px 12px;width:100%;resize:vertical}
+.copybox .btn{justify-self:start}
+/* Wochenplan anpassen */
+.mine{font-size:11px;font-weight:700;color:#6B3FD1;background:#F1EBFF;border-radius:8px;padding:3px 8px;justify-self:start}
+.adjl{justify-self:start;text-decoration:underline}
+.planadj{display:grid;gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:14px;scroll-margin-top:90px}
+.planadj h3{margin:0}
+.planform .only-max,.planform .only-session,.planform .only-repeat{display:none}
+.planform:has(select[name=mode] option[value=max]:checked) .only-max{display:flex}
+.planform:has(select[name=mode] option[value=session]:checked) .only-session{display:flex}
+.planform:has(select[name=mode] option[value=session]:checked) .only-repeat,.planform:has(select[name=mode] option[value=off]:checked) .only-repeat,.planform:has(select[name=mode] option[value=max]:checked) .only-repeat{display:flex}
+.chk-l{display:flex;gap:8px;align-items:center;font-size:14px}

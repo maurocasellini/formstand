@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { viewerAndSubject } from "@/lib/subject";
 import * as repo from "@/lib/repo";
 import { appConfigured } from "@/lib/apps";
@@ -24,6 +25,7 @@ export default async function Quellen({ searchParams }) {
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Quellen</h1><p>Hier verbindest du deine eigenen Konten. Danach läuft alles automatisch: täglicher Abgleich um 06:15, Strava zusätzlich sofort bei jedem neuen Workout.</p></div>
         <SyncButton action={syncNow} /></div>
+      {!viewer.demo && !conns.length && <div className="notice good">Neu hier? Garmin verbindest du über intervals.icu – die <Link href="/anleitung#garmin">Schritt-für-Schritt-Anleitung</Link> erklärt jeden Klick.</div>}
       {viewer.demo && <div className="notice warn">In der Demo stammen die Daten von Beispiel-Geräten (Garmin, WHOOP, Strava). Mit eigenem Konto verbindest du hier deine echten Apps.</div>}
       {sp?.ok && <div className="notice good">{sp.ok}</div>}
       {sp?.error && <div className="notice crit">{sp.error}</div>}

@@ -8,7 +8,7 @@ import { bodyProgress } from "@/lib/body";
 import { periodReview, reviewText } from "@/lib/weekly";
 import * as repo from "@/lib/repo";
 import { FOCUS, EVENT_TYPES, WEAKNESSES } from "@/lib/catalog";
-import { saveGoals, addEvent, deleteEvent } from "../../actions-data";
+import { saveGoals, addEvent, deleteEvent, savePlanDay, deleteFixed } from "../../actions-data";
 import ActionForm from "@/components/ActionForm";
 
 export const maxDuration = 60;
@@ -74,10 +74,41 @@ export default async function Ziele({ searchParams, demo } = {}) {
                 {x.second && <div className="wd-2"><b>+ {x.second.title}</b><span className="note"> · {x.second.min} min</span><p>{x.second.detail}</p></div>}
                 {(x.focus || x.focus2 || x.second?.focus) && <span className="focus">Fokus: {[...new Set([x.focus, x.focus2, x.second?.focus].filter(Boolean))].map((f) => WEAKNESSES[f]?.[0]).join(" + ")}</span>}
                 {changed && <span className="adj">Heute angepasst: {decision.title}</span>}
+                {x.custom && <span className="mine">{x.recurring ? "Fester Termin" : "Von dir angepasst"}</span>}
+                {x.capped != null && <span className="mine">Nur {x.capped} min Zeit</span>}
+                {!ro && x.day >= today && <a className="note adjl" href={`${base}/ziele?${week ? "w=1&" : ""}d=${x.day}#anpassen`}>anpassen</a>}
               </div>
             );
           })}
         </div>
+        {!ro && (
+          <div className="planadj" id="anpassen">
+            <h3>Tag anpassen</h3>
+            <p className="note">Keine Zeit, nur kurz Zeit oder etwas Eigenes (z. B. Ausfahrt mit Buddy)? Trag es ein – Formstand verteilt den Rest der Woche neu. Mit „jede Woche“ wird daraus ein fester Termin.</p>
+            <ActionForm action={savePlanDay} className="stack planform" submit="Übernehmen" reset={false}>
+              <div className="form">
+                <label className="f">Tag<select name="date" defaultValue={sp?.d && plan.items.some((x) => x.day === sp.d) ? sp.d : plan.items.find((x) => x.day >= today)?.day}>{plan.items.filter((x) => x.day >= today).map((x) => <option key={x.day} value={x.day}>{DAYNAMES[x.dow]} {short(x.day)} – {x.title}</option>)}</select></label>
+                <label className="f">Was ist los?<select name="mode" defaultValue="session">
+                  <option value="session">Eigenes Training (z. B. mit Buddy)</option><option value="off">Keine Zeit</option><option value="max">Nur begrenzt Zeit</option><option value="plan">Vorschlag wiederherstellen</option>
+                </select></label>
+              </div>
+              <div className="form only-max"><label className="f">Minuten verfügbar<input type="number" name="min" min="10" max="600" step="5" placeholder="z. B. 45" /></label></div>
+              <div className="form only-session">
+                <label className="f">Name<input type="text" name="title" maxLength={60} placeholder="z. B. Ausfahrt mit Buddy" /></label>
+                <label className="f">Art<select name="type" defaultValue="quality"><option value="quality">Hart (Intervalle, Gruppe, Rennen)</option><option value="long">Lang & ruhig</option><option value="easy">Locker</option><option value="strength">Kraft</option></select></label>
+                <label className="f">Sport<select name="sport" defaultValue="bike"><option value="bike">Rad</option><option value="run">Laufen</option><option value="swim">Schwimmen</option><option value="strength">Kraft</option><option value="other">Anderes</option></select></label>
+                <label className="f">Dauer min<input type="number" name="dur" min="10" max="600" step="5" placeholder="90" /></label>
+              </div>
+              <label className="chk-l only-repeat"><input type="checkbox" name="repeat" value="1" /> jede Woche so (fester Termin)</label>
+            </ActionForm>
+            {(goals.fixed || []).length > 0 && (
+              <ul className="list">{goals.fixed.map((f) => (
+                <li key={f.id}><span className="tag next">jeden {DAYNAMES[f.dow]}</span><span>{f.kind === "off" ? "Keine Zeit" : f.kind === "max" ? `Nur ${f.min} min` : `${f.title} · ${f.min} min`}</span>
+                  <form action={deleteFixed}><input type="hidden" name="id" value={f.id} /><button className="x" type="submit" aria-label="Festen Termin löschen">✕</button></form></li>
+              ))}</ul>
+            )}
+          </div>
+        )}
         {!m.hasGoals && <p className="note">Noch ein Standardplan. Trag unten Wettkämpfe, Schwächen und dein Zeitbudget ein, dann wird er persönlich.</p>}
       </section>
 

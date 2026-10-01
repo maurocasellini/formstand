@@ -2,7 +2,7 @@ import { pageContext } from "@/lib/subject";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
-import { addManual, deleteManual, updateProfile } from "../../actions-data";
+import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout } from "../../actions-data";
 import { INBODY_FIELDS } from "@/lib/ai";
 import { analyzeTriggers } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
@@ -19,6 +19,7 @@ export default async function Eingaben({ demo } = {}) {
   const tests = allMan.filter((e) => e.kind === "test");
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr), css = tests.find((t) => TEST_TYPES[t.data?.test]?.css);
   const kg = Number(subject.weight_kg) || null;
+  const own = (await repo.getActivities(subject.id)).filter((a) => a.provider === "manual").sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
 
   // Persönliche Trigger-Auswertung (12 Monate)
   const { all, activities } = await buildSeries(subject.id, addDays(today, -364), today);
@@ -27,6 +28,22 @@ export default async function Eingaben({ demo } = {}) {
   return (
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Eingaben</h1><p>Alles, was keine Schnittstelle liefert. Wird getrennt von den API-Daten gespeichert, mit Datum und Autor.</p></div></div>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Training nachtragen</h2><span className="note">für Einheiten ohne Uhr – zählt für Belastung, Muskulatur und Plan-Treue</span></div>
+        <ActionForm action={addWorkout} submit="Eintragen">
+          <label className="f">Datum<input type="date" name="day" defaultValue={today} max={today} /></label>
+          <label className="f">Sport<select name="sport" defaultValue="bike"><option value="bike">Rad</option><option value="run">Laufen</option><option value="swim">Schwimmen</option><option value="strength">Kraft</option><option value="hike">Wandern</option><option value="other">Anderes</option></select></label>
+          <label className="f">Name<input type="text" name="title" maxLength={60} placeholder="z. B. Ausfahrt mit Buddy" /></label>
+          <label className="f">Dauer min<input type="number" name="min" min="5" max="900" required /></label>
+          <label className="f">Anstrengung 1–10<input type="number" name="rpe" min="1" max="10" defaultValue="6" required /></label>
+          <label className="f">Bereich (Kraft)<select name="region" defaultValue="full"><option value="full">Ganzkörper</option><option value="legs">Beine</option><option value="upper">Oberkörper</option></select></label>
+        </ActionForm>
+        {own.length > 0 && <ul className="list">{own.map((a) => (
+          <li key={a.external_id}><span className="tag">{fmt(a.day)}</span><span>{a.name} · {Math.round(a.duration_s / 60)} min</span>
+            <form action={deleteWorkout}><input type="hidden" name="id" value={a.external_id} /><button className="x" type="submit" aria-label="Löschen">✕</button></form></li>
+        ))}</ul>}
+      </section>
 
       <section className="grid3">
         <div className="panel">

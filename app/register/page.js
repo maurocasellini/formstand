@@ -28,6 +28,7 @@ export default async function Register() {
           </>
         ) : <div className="notice warn">Die Registrierung ist geschlossen. Konten legt der Admin an.</div>}
         <p className="note"><Link href="/login">Zurück zur Anmeldung</Link></p>
+        <p className="note"><Link href="/anleitung">Anleitung: so richtest du alles ein</Link></p>
       </div>
     </main>
   );

@@ -292,3 +292,73 @@ export async function comparePhotos(_prev, form) {
   revalidatePath("/bilder");
   return { ok: "Vergleich erstellt." };
 }
+
+// ---------- Wochenplan anpassen ----------
+const PLAN_TYPES = ["quality", "easy", "long", "strength"];
+export async function savePlanDay(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const date = String(form.get("date") || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Tag wählen." };
+  const mode = String(form.get("mode") || "plan");
+  const repeat = form.get("repeat") === "1";
+  const dow = (new Date(date + "T12:00:00Z").getUTCDay() + 6) % 7;
+  const min = scale(form.get(mode === "session" ? "dur" : "min"), 10, 600);
+  let entry = null;
+  if (mode === "off") entry = { kind: "off", note: String(form.get("note") || "").slice(0, 120) || null };
+  else if (mode === "max") { if (!min) return { error: "Wie viele Minuten hast du?" }; entry = { kind: "max", min }; }
+  else if (mode === "session") {
+    const type = PLAN_TYPES.includes(String(form.get("type"))) ? String(form.get("type")) : "easy";
+    const title = String(form.get("title") || "").trim().slice(0, 60);
+    if (!title) return { error: "Gib dem Training einen Namen, z. B. „Ausfahrt mit Buddy“." };
+    entry = { kind: "session", type, sport: ["bike", "run", "swim", "strength", "other"].includes(String(form.get("sport"))) ? String(form.get("sport")) : null, title, min: min || 60, note: String(form.get("note") || "").slice(0, 160) || null };
+  }
+  const cutoff = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+  await repo.updateGoals(subject.id, (g) => {
+    const overrides = Object.fromEntries(Object.entries(g.overrides || {}).filter(([d]) => d >= cutoff));
+    let fixed = [...(g.fixed || [])];
+    if (!entry) {
+      delete overrides[date];
+      // Fester Termin an diesem Wochentag: nur diese Woche aussetzen
+      if (fixed.some((f) => Number(f.dow) === dow)) overrides[date] = { kind: "plan" };
+    } else if (repeat) {
+      fixed = [...fixed.filter((f) => Number(f.dow) !== dow), { id: crypto.randomUUID(), dow, ...entry }];
+      delete overrides[date];
+    } else overrides[date] = entry;
+    return { ...g, overrides, fixed, updated_at: g.updated_at || new Date().toISOString() };
+  });
+  revalidatePath("/", "layout");
+  return { ok: entry ? (repeat ? "Gespeichert – gilt ab jetzt jede Woche." : "Gespeichert – der Rest der Woche ist neu verteilt.") : "Zurück auf den Vorschlag." };
+}
+export async function deleteFixed(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const id = String(form.get("id"));
+  await repo.updateGoals(subject.id, (g) => ({ ...g, fixed: (g.fixed || []).filter((f) => f.id !== id) }));
+  revalidatePath("/", "layout");
+}
+
+// ---------- Training nachtragen (ohne Uhr) ----------
+const SPORT_MAP = { bike: ["Ride", "end"], run: ["Run", "end"], swim: ["Swim", "end"], strength: ["WeightTraining", "str"], hike: ["Hike", "other"], other: ["Workout", "end"] };
+export async function addWorkout(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const day = dayOf(form.get("day"));
+  const sp = SPORT_MAP[String(form.get("sport"))] ? String(form.get("sport")) : "other";
+  const min = scale(form.get("min"), 5, 900), rpe = scale(form.get("rpe"), 1, 10);
+  if (!min || !rpe) return { error: "Dauer und Anstrengung angeben." };
+  const [sport, category] = SPORT_MAP[sp];
+  const id = crypto.randomUUID();
+  const load = category === "other" ? Math.round(min / 3) : Math.round((min / 60) * 100 * (rpe / 8) ** 2 * (category === "str" ? 0.8 : 1));
+  await repo.upsertActivities(subject.id, [{ provider: "manual", external_id: id, start_time: `${day}T10:00:00.000Z`, day, sport, category, name: String(form.get("title") || "").trim().slice(0, 60) || ({ bike: "Rad", run: "Lauf", swim: "Schwimmen", strength: "Kraft", hike: "Wandern", other: "Training" })[sp], duration_s: min * 60, has_power: false, load }]);
+  const region = ["legs", "upper", "full"].includes(String(form.get("region"))) ? String(form.get("region")) : null;
+  await repo.setFeel(subject.id, `manual|${id}`, { rpe, region: category === "str" ? region || "full" : null, day });
+  revalidatePath("/", "layout");
+  return { ok: "Training eingetragen." };
+}
+export async function deleteWorkout(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  await repo.deleteActivity(subject.id, "manual", String(form.get("id")));
+  revalidatePath("/", "layout");
+}

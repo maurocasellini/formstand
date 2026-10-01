@@ -6,6 +6,7 @@ import { baseUrl } from "@/lib/baseurl";
 import { SPORTS } from "@/lib/catalog";
 import { createUser, setRole, resetPassword, deleteUser, assignCoach, saveApp, removeApp, setRegistration } from "../../actions-admin";
 import ActionForm from "@/components/ActionForm";
+import CopyBox from "@/components/CopyBox";
 
 const ROLE = { admin: "Admin", coach: "Coach", athlete: "Sportler" };
 const when = (d) => (d ? new Date(d).toLocaleString("de-CH", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Zurich" }) : "–");
@@ -85,6 +86,18 @@ export default async function Admin() {
           </div>
         </div>
         <p className="note">Garmin läuft ohne Freischaltung über intervals.icu (jede Person trägt ihren eigenen Schlüssel unter „Quellen“ ein) und über den Garmin-Datenexport.</p>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Leute einladen</h2><span className="note">per WhatsApp, Mail oder Slack verschicken</span></div>
+        <CopyBox text={`Hoi! Ich nutze Formstand für Training und Erholung – Tagesform aus Garmin/WHOOP, Trainingsplan auf deine Wettkämpfe und Schwächen, alles an einem Ort.
+
+1) Erst mal reinschauen (ohne Konto): ${base}/demo
+2) Konto anlegen: ${base}/register
+3) Anleitung Schritt für Schritt (Garmin über intervals.icu, Strava, WHOOP, Erinnerung): ${base}/anleitung
+
+Dauert etwa 15 Minuten. Bei Fragen melde dich!`} />
+        <p className="note">Lieber Konten selbst anlegen? Unten bei „Konto anlegen“ – dann Benutzername und Startpasswort zusammen mit dem Anleitungs-Link weitergeben.</p>
       </section>
 
       <section className="grid2">

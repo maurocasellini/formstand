@@ -28,6 +28,7 @@ export default async function Login() {
           <Link className="btn ghost" href="/demo">Demo ansehen</Link>
         </div>
         {s.registrationOpen ? <p className="note">Noch kein Konto? <Link href="/register">Jetzt registrieren</Link></p> : <p className="note">Konten legt der Admin an.</p>}
+        <p className="note"><Link href="/anleitung">Anleitung: so richtest du alles ein</Link></p>
       </div>
     </main>
   );
