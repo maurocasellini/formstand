@@ -9,6 +9,7 @@ import CompareSlider from "@/components/CompareSlider";
 import { filesReady } from "@/lib/files";
 import { aiReady } from "@/lib/ai";
 import ActionForm from "@/components/ActionForm";
+import FilePick from "@/components/FilePick";
 
 export const maxDuration = 60;
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
@@ -87,7 +88,7 @@ export default async function Bilder({ searchParams, demo } = {}) {
           <h2 id="hinzufuegen">Hinzufügen</h2>
           {!filesReady && <div className="notice warn">Der Dateispeicher ist noch nicht verbunden.</div>}
           <ActionForm action={uploadMedia} submit="Hochladen" busy="Lädt und erkennt…">
-            <label className="f fwide">Dateien (Bild oder PDF, max. 4 MB, bis 6 auf einmal)<input type="file" name="file" accept="image/*,application/pdf" multiple required /></label>
+            <FilePick name="file" accept="image/*,application/pdf" multiple hint="Foto, Screenshot oder PDF · max. 4 MB · bis 6 auf einmal" />
             <label className="f">Datum<DateField name="day" defaultValue={todayIso()} max={todayIso()} /></label>
             <label className="f">Art<select name="kind" defaultValue={MEDIA_KINDS[sp?.art] ? sp.art : "auto"}>
               <option value="auto">{ai ? "Automatisch erkennen" : "Automatisch (Bild = Körperfoto)"}</option>{Object.entries(MEDIA_KINDS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
