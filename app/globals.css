@@ -187,3 +187,40 @@ td.wrap{white-space:normal}
 .demo-cta p{margin:2px 0 0}
 .demo-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .demo-cta .btn.ghost{background:var(--surface);border:1px solid var(--line);box-shadow:0 1px 2px rgba(16,24,40,.06)}
+
+/* Check-in */
+.ckpanel{border:1.5px solid var(--accent-soft, #DCE3FF)}
+.checkin{display:grid;gap:12px}
+.checkin .q{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:center}
+@media (max-width:640px){.checkin .q{grid-template-columns:1fr;gap:6px}}
+.checkin .ql{font-weight:600;font-size:14px;display:grid}
+.checkin .ql small{font-weight:500;font-size:12px;color:var(--muted)}
+.checkin select{height:40px;max-width:220px}
+.checkin > .btn{justify-self:start}
+.pick{display:inline-flex;gap:6px;flex-wrap:wrap}
+.pick label{position:relative}
+.pick input{position:absolute;opacity:0;width:0;height:0}
+.pick span{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--sunk);font-weight:700;cursor:pointer;transition:background .15s,color .15s}
+.pick input:checked+span{background:var(--accent);color:#fff}
+.pick input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.sore{display:flex;gap:16px;flex-wrap:wrap}
+.sore > div{display:grid;gap:4px}
+.sore em{font-style:normal;font-size:12px;color:var(--muted);font-weight:600}
+.sore .pick span{width:34px;height:34px}
+/* Zustände */
+.meter.m2::after{display:none}
+.why{display:grid;gap:6px;font-size:13px;margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+.why p{margin:0}
+.why details summary{cursor:pointer;font-weight:600}
+.why .fx{display:flex;flex-wrap:wrap;gap:4px 10px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.why .fx b{flex-basis:100%;font-size:12px}
+.why .fx span{font-size:12px;color:var(--muted)}
+.up{color:var(--good)!important}.down{color:var(--crit)!important}
+.q-hoch{color:var(--good);font-weight:700}.q-mittel{color:var(--warn);font-weight:700}.q-niedrig{color:var(--crit);font-weight:700}
+.ctx{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.ctx em{font-style:normal;font-size:12px;font-weight:600;color:var(--muted)}
+/* Gefühl nach Einheiten */
+.rate{display:grid;gap:8px}
+.rate-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.rate-row > span:first-of-type{flex:1 1 220px}
+.rate-row select{height:36px}

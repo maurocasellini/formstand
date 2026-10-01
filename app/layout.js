@@ -5,7 +5,11 @@ const display = Sora({ subsets: ["latin"], weight: ["500", "600", "700"], variab
 const body = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body" });
 const mono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
 
-export const metadata = { title: "Formstand", description: "Trainings-Cockpit: Recovery, Workouts, Ernährung und Körper aus allen Quellen." };
+export const metadata = {
+  title: "Formstand", description: "Trainings-Cockpit: Recovery, Workouts, Ernährung und Körper aus allen Quellen.",
+  appleWebApp: { capable: true, title: "Formstand", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
+};
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F5F7FB" };
 
 export default function RootLayout({ children }) {

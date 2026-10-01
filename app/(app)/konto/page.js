@@ -1,10 +1,14 @@
 import { requireUser } from "@/lib/auth";
 import { changePassword, updateAccount } from "../../actions-auth";
 import ActionForm from "@/components/ActionForm";
+import PushToggle from "@/components/PushToggle";
+import { vapid } from "@/lib/push";
+import { savePushSub, deletePushSub, testPush } from "../../actions-data";
 
 export default async function Konto({ searchParams }) {
   const sp = await searchParams;
   const me = await requireUser();
+  const pub = me.demo ? null : (await vapid()).publicKey;
   return (
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Mein Konto</h1><p>Benutzername: <b>{me.username}</b></p></div></div>
@@ -27,6 +31,13 @@ export default async function Konto({ searchParams }) {
           <p className="note">Sportart, Gewicht und Jahrgang findest du unter „Eingaben“.</p>
         </div>
       </section>
+      {!me.demo && (
+        <section className="panel">
+          <h2>Morgen-Erinnerung</h2>
+          <p className="muted">Jeden Morgen um ca. 07:00 eine Nachricht mit deiner Tagesform und dem Check-in (4 Fragen, 5 Sekunden). Pro Gerät einschalten, z. B. auf dem Handy.</p>
+          <PushToggle publicKey={pub} save={savePushSub} remove={deletePushSub} test={testPush} />
+        </section>
+      )}
     </>
   );
 }

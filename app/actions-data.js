@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { put, del, get } from "@vercel/blob";
 import crypto from "node:crypto";
 import * as repo from "@/lib/repo";
@@ -12,6 +13,7 @@ import { intervals } from "@/lib/providers/intervals";
 import { aiReady } from "@/lib/ai";
 import { applyInBody } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
+import { sendTo } from "@/lib/push";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -167,4 +169,58 @@ export async function deleteMedia(form) {
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
   if (m) { try { await del(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
   revalidatePath("/", "layout");
+}
+
+// ---------- Morgen-Check-in ----------
+const scale = (v, a, b) => { const n = Number(v); return Number.isInteger(n) && n >= a && n <= b ? n : null; };
+export async function saveCheckin(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const data = {
+    energy: scale(form.get("energy"), 1, 5), motivation: scale(form.get("motivation"), 1, 5), stress: scale(form.get("stress"), 1, 5),
+    soreness: { legs: scale(form.get("sore_legs"), 0, 3) ?? 0, upper: scale(form.get("sore_upper"), 0, 3) ?? 0, core: scale(form.get("sore_core"), 0, 3) ?? 0 },
+    time_min: scale(form.get("time_min"), 0, 600), note: String(form.get("note") || "").slice(0, 200) || null,
+  };
+  if (!data.energy || !data.motivation || !data.stress) return { error: "Bitte Energie, Motivation und Stress wählen." };
+  await repo.setCheckin(subject.id, todayIso(), data, viewer.id);
+  // Danach frische Daten holen und die Empfehlung mit dem Check-in neu schreiben
+  after(async () => {
+    try { await syncUser(subject.id); } catch {}
+    try { if (await aiReady()) await makeAdvice(subject.id); } catch {}
+  });
+  revalidatePath("/", "layout");
+  return { ok: "Danke! Tagesform und Empfehlung sind aktualisiert." };
+}
+
+// ---------- Gefühl nach der Einheit ----------
+export async function rateSession(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const key = String(form.get("key") || "").slice(0, 200);
+  const rpe = scale(form.get("rpe"), 1, 10);
+  const region = ["legs", "upper", "full"].includes(String(form.get("region"))) ? String(form.get("region")) : null;
+  if (!key || !rpe) return { error: "Bitte wählen, wie hart es war." };
+  await repo.setFeel(subject.id, key, { rpe, region, day: dayOf(form.get("day")) });
+  revalidatePath("/", "layout");
+  return { ok: "Gespeichert." };
+}
+
+// ---------- Push ----------
+export async function savePushSub(sub) {
+  const { viewer, demo } = await ctx();
+  if (demo) return DEMO;
+  if (!sub?.endpoint || !sub?.keys?.p256dh) return { error: "Ungültiges Abo." };
+  await repo.addPushSub(viewer.id, { endpoint: String(sub.endpoint), keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) } });
+  return { ok: true };
+}
+export async function deletePushSub(endpoint) {
+  const { viewer } = await ctx();
+  await repo.removePushSub(viewer.id, String(endpoint || ""));
+  return { ok: true };
+}
+export async function testPush() {
+  const { viewer, demo } = await ctx();
+  if (demo) return DEMO;
+  const n = await sendTo(viewer.id, { title: "Formstand", body: "So sieht die Morgen-Erinnerung aus.", url: "/heute#checkin", tag: "test" });
+  return n ? { ok: "Testnachricht gesendet." } : { error: "Kein aktives Gerät gefunden." };
 }

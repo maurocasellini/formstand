@@ -3,7 +3,8 @@ import { viewerAndSubject } from "@/lib/subject";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession } from "../../actions-data";
+import { computeStates, personalContext, REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
 import { getTodayAdvice } from "@/lib/coach";
 import ActionForm from "@/components/ActionForm";
@@ -25,24 +26,51 @@ function Dial({ s, delta }) {
   );
 }
 
-function recommend(T, zones, sport) {
-  if (T?.score == null) return "Sobald Recovery-Daten da sind (WHOOP, Garmin, Oura), steht hier die Tagesempfehlung.";
-  const s = T.score, st = stateOf(s), F = zones.ftp;
+function recommend(T, zones, st, ck) {
+  if (T?.score == null) return "Sobald Recovery-Daten da sind (Garmin, WHOOP, Oura) oder du eincheckst, steht hier die Tagesempfehlung.";
+  const s = T.score, F = zones.ftp, mins = ck?.time_min || null;
   const w = (a, b) => (F ? ` (${Math.round(F * a)}–${Math.round(F * b)} W)` : "");
-  const plan = {
-    good: `Qualitätstag: 3×10 min Sweet Spot${w(0.88, 0.93)} oder Intervalle im Laufen. Krafttraining schwer möglich.`,
-    warn: `Moderat: 60–75 min Zone 2${w(0.56, 0.75)}. Kraft nur mittel (RPE 7).`,
-    crit: `Erholung: Ruhetag oder 30 min Zone 1${F ? ` (unter ${Math.round(F * 0.55)} W)` : ""}, Mobility.`,
-  }[st];
-  const alc = (T.night || []).find((t) => t.t === "alkohol");
+  const dur = (std) => (mins ? Math.max(20, Math.min(std, mins - 10)) : std);
+  const legs = st?.states?.muscle?.regions?.legs?.value ?? 100, upper = st?.states?.muscle?.regions?.upper?.value ?? 100;
+  const lim = st?.limiter?.key;
+  let plan, avoid = null;
+  if (s < 34) { plan = `Erholung: Ruhetag oder ${dur(30)} min Zone 1${F ? ` (unter ${Math.round(F * 0.55)} W)` : ""}, dazu Mobility.`; avoid = "Intervalle und schweres Krafttraining."; }
+  else if (lim === "muscle" && legs < 50) { plan = upper >= 60 ? `Oberkörper-Kraft (${dur(45)} min) oder ${dur(45)} min lockeres Rad in Zone 1–2${w(0.5, 0.65)}.` : `${dur(40)} min lockere Bewegung und Mobility.`; avoid = "Schwere Beine: Kniebeugen, Kreuzheben, Laufintervalle, harte Radintervalle."; }
+  else if (lim === "sleep") { plan = `${dur(60)} min Zone 2${w(0.56, 0.72)}. Qualität lieber auf morgen schieben.`; avoid = "Hohe Intensität bei Schlafdefizit."; }
+  else if (lim === "stress") { plan = `${dur(45)} min locker draussen, Puls ruhig halten.`; avoid = "Zusätzlicher harter Reiz an einem stressigen Tag."; }
+  else if (s >= 67) { plan = `Qualitätstag: ${mins && mins < 60 ? "2×10" : "3×10"} min Sweet Spot${w(0.88, 0.93)} oder Laufintervalle${legs < 65 ? "; Beine sind noch nicht ganz frisch, lieber Rad" : ""}. Krafttraining schwer möglich.`; }
+  else { plan = `Moderat: ${dur(70)} min Zone 2${w(0.56, 0.75)}. Kraft nur mittel (RPE 7).`; }
+  const why = [...(st?.drivers || []), st?.limiter?.why].filter(Boolean).slice(0, 3);
   return [
     `Tagesform ${s}/100 · ${stateText(s)}`, "",
     `Training: ${plan}`,
+    avoid ? `Nicht empfohlen: ${avoid}` : null,
+    mins ? `Zeit heute: ${mins} min eingeplant.` : null,
     `Erholung: ${T.sleep != null ? `Schlaf ${r1(T.sleep)} h. ${T.sleep < 7 ? "Heute 30 min früher ins Bett." : "Rhythmus halten."}` : "Keine Schlafdaten."}`,
-    alc ? `Hinweis: Alkohol am Vorabend (${alc.n} Gl.) drückt HRV und Ruhepuls.` : null,
-    T.tsb < -20 ? `Achtung: Ermüdung deutlich über Fitness (Form ${Math.round(T.tsb)}). Entlastung einplanen.` : null,
+    why.length ? `Warum: ${why.join(" · ")}` : null,
   ].filter((x) => x !== null).join("\n");
 }
+
+const SCALE = { energy: ["Energie", "leer", "voll"], motivation: ["Motivation", "keine", "hoch"], stress: ["Stress", "ruhig", "hoch"] };
+function Seg({ name, n = 5, from = 1, value }) {
+  return <div className="pick">{Array.from({ length: n }, (_, k) => k + from).map((v) => (
+    <label key={v}><input type="radio" name={name} value={v} defaultChecked={value === v} required={from === 1} /><span>{v}</span></label>
+  ))}</div>;
+}
+function CheckinForm({ ck }) {
+  return (
+    <ActionForm action={saveCheckin} className="checkin" submit={ck ? "Aktualisieren" : "Einchecken"} busy="Speichert…" reset={false}>
+      {Object.entries(SCALE).map(([k, [n, lo, hi]]) => (
+        <div key={k} className="q"><span className="ql">{n}<small>1 = {lo} · 5 = {hi}</small></span><Seg name={k} value={ck?.[k]} /></div>
+      ))}
+      <div className="q"><span className="ql">Muskelkater<small>0 = nichts · 3 = stark</small></span>
+        <div className="sore">{Object.entries(REGIONS).map(([r, n]) => <div key={r}><em>{n}</em><Seg name={`sore_${r}`} n={4} from={0} value={ck?.soreness?.[r] ?? 0} /></div>)}</div></div>
+      <div className="q"><span className="ql">Zeit fürs Training heute</span>
+        <select name="time_min" defaultValue={ck?.time_min ?? ""}><option value="">offen</option>{[0, 30, 45, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m === 0 ? "kein Training" : `${m} min`}</option>)}</select></div>
+    </ActionForm>
+  );
+}
+const RPE = [[1, "sehr leicht"], [2, "leicht"], [3, "locker"], [4, "moderat"], [5, "etwas hart"], [6, "hart"], [7, "sehr hart"], [8, "sehr hart+"], [9, "fast maximal"], [10, "maximal"]];
 
 export const maxDuration = 60;
 
@@ -53,7 +81,7 @@ function Advice({ a }) {
       <div className="adv-head"><span className={`pill ${a.state}`}>{a.headline}</span></div>
       {a.summary && <p className="adv-sum">{a.summary}</p>}
       <dl>
-        {[["Training", a.training], ["Alternative", a.alternative], ["Erholung", a.recovery], ["Ernährung", a.nutrition]].filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+        {[["Training", a.training], ["Nicht empfohlen", a.avoid], ["Alternative", a.alternative], ["Erholung", a.recovery], ["Ernährung", a.nutrition]].filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>
       {a.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
       {a.why?.length > 0 && <details><summary>Warum?</summary><ul>{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}
@@ -65,14 +93,17 @@ function Advice({ a }) {
 export default async function Heute() {
   const { subject, viewer } = await viewerAndSubject();
   const today = todayIso();
-  const { days, activities, providers, zones } = await buildSeries(subject.id, addDays(today, -41), today);
+  const { all, activities, providers, zones } = await buildSeries(subject.id, addDays(today, -364), today);
+  const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
+  const st = computeStates(all), ctxv = personalContext(all);
+  const ck = T?.checkin || null;
+  const unrated = activities.filter((a) => a.category !== "other" && !a.rpe && a.day >= addDays(today, -3)).slice(0, 4);
   const conns = await repo.getConnections(subject.id);
   const todayTrig = (await repo.getManual(subject.id)).filter((e) => e.kind === "trigger" && e.day === today);
   const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
   const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
-  const labels = { hrv: "HRV", rhr: "Ruhepuls", sleep: "Schlaf", tsb: "Trainingsbalance" };
 
   // Mini-Verlauf 6 Wochen
   const W = 560, H = 200, L = 30, Rr = 10, Tp = 10, B = 22;
@@ -106,6 +137,13 @@ export default async function Heute() {
         </div>
       )}
 
+      {!ck && (hasAny || !viewer.demo) && (
+        <section className="panel ckpanel" id="checkin">
+          <div className="panel-head"><h2>Guten Morgen! Wie fühlst du dich?</h2><span className="note">5 Sekunden · macht Tagesform und Empfehlung deutlich genauer</span></div>
+          <CheckinForm ck={null} />
+        </section>
+      )}
+
       <section className="grid2">
         <div className="panel">
           <div className="panel-head"><h2>Tagesform</h2><span className="note">bereinigt aus {recP.length ? recP.map((p) => PNAME[p] || p).join(" + ") : "–"}</span></div>
@@ -113,26 +151,64 @@ export default async function Heute() {
             <Dial s={T?.score ?? null} delta={T?.score != null && Y?.score != null ? T.score - Y.score : null} />
             <div className="drivers">
               <span className={`pill ${stateOf(T?.score)}`}>{stateText(T?.score)}</span>
-              {T?.z && ["hrv", "rhr", "sleep", "tsb"].map((k) => {
-                const z = Math.max(-2.5, Math.min(2.5, T.z[k])), w = (Math.abs(z) / 2.5) * 50;
-                return (
-                  <div className="drv" key={k}><span>{labels[k]}</span>
-                    <div className="meter"><i style={{ left: z >= 0 ? "50%" : `${50 - w}%`, width: `${w}%`, background: z >= 0 ? "var(--good)" : "var(--crit)" }} /></div>
-                    <span className="num muted" style={{ textAlign: "right" }}>{z >= 0 ? "+" : ""}{z.toFixed(1)}σ</span></div>
-                );
-              })}
+              {st && Object.entries(st.states).map(([k, x]) => (
+                <div className="drv" key={k}><span>{STATE_NAMES[k]}{k === "muscle" && x.limiter && x.value < 70 ? <small className="note"> · {REGIONS[x.limiter]}</small> : null}</span>
+                  <div className="meter m2"><i style={{ width: `${x.value ?? 0}%`, background: `var(--${stateColor(x.value)})` }} /></div>
+                  <span className="num" style={{ textAlign: "right", fontWeight: 600 }}>{x.value ?? "–"}</span></div>
+              ))}
             </div>
           </div>
-          <p className="note">Balken = Abweichung zur persönlichen 28-Tage-Baseline.{T?.night?.length ? ` Vorabend: ${T.night.map((t) => triggerName(t.t)).join(", ")}.` : ""}</p>
+          {st && (
+            <div className="why">
+              <p><span className={`q-${st.quality.level}`}>Datenqualität {st.quality.level}</span> · {st.quality.have}/{st.quality.of} Signale{st.quality.missing.length ? <span className="note"> (fehlt: {st.quality.missing.join(", ")})</span> : null}</p>
+              {st.drivers.length > 0 && <p><b>Haupttreiber:</b> {st.drivers.join(" · ")}</p>}
+              <p><b>Limiter:</b> {st.limiter ? `${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : "keiner"}</p>
+              <details><summary>Alle Faktoren</summary>
+                {Object.entries(st.states).map(([k, x]) => <div key={k} className="fx"><b>{STATE_NAMES[k]}</b>{x.drivers.length ? x.drivers.map((d, i) => <span key={i} className={d.z > 0.3 ? "up" : d.z < -0.3 ? "down" : ""}>{d.t}</span>) : <span className="note">keine Daten</span>}</div>)}
+                {T?.scoreObj != null && ck && <p className="note">Messwerte allein: {T.scoreObj}/100. Dein Check-in zählt zu einem Viertel mit.</p>}
+              </details>
+              {ck && <details id="checkin"><summary>Check-in von heute ändern</summary><CheckinForm ck={ck} /></details>}
+            </div>
+          )}
         </div>
         <div className="panel">
           <div className="panel-head"><h2>Empfehlung für heute</h2><span className={`tag ${advice ? "on" : ""}`}>{advice ? "KI-Coach" : "Regelbasiert"}</span></div>
-          {advice ? <Advice a={advice} /> : <div className="coach">{recommend(T, zones, subject.sport)}</div>}
+          {advice ? <Advice a={advice} /> : <div className="coach">{recommend(T, zones, st, ck)}</div>}
           {viewer.demo ? null : ai && hasAny ? (
             <ActionForm action={createAdvice} className="btnrow" submit={advice ? "Neu erstellen" : "KI-Empfehlung erstellen"} busy="Analysiert deine Daten…" reset={false} />
           ) : !ai ? <p className="note">Die KI-Empfehlung wird aktiv, sobald ein Admin Claude unter Admin → Schnittstellen freischaltet.</p> : null}
         </div>
       </section>
+
+      {unrated.length > 0 && !viewer.demo && (
+        <section className="panel">
+          <div className="panel-head"><h2>Wie hart war's?</h2><span className="note">Ein Tipp pro Einheit. Damit kann Formstand Kraft und Ausdauer fair vergleichen.</span></div>
+          <div className="rate">{unrated.map((a) => (
+            <ActionForm key={a.feelKey} action={rateSession} className="rate-row" submit="OK" busy="…">
+              <input type="hidden" name="key" value={a.feelKey} /><input type="hidden" name="day" value={a.day} />
+              <span><b>{a.name || a.sport}</b> <span className="note">{a.day.slice(8, 10)}.{a.day.slice(5, 7)}. · {Math.round(a.duration_s / 60)} min</span></span>
+              <select name="rpe" defaultValue="" required><option value="" disabled>Anstrengung 1–10</option>{RPE.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}</select>
+              {a.category === "str" && <select name="region" defaultValue="full"><option value="full">Ganzkörper</option><option value="legs">Beine</option><option value="upper">Oberkörper</option></select>}
+            </ActionForm>
+          ))}</div>
+        </section>
+      )}
+
+      {ctxv.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Deine Werte im Kontext</h2><span className="note">verglichen mit dir selbst: Ø der letzten 28 Tage und Rang in 12 Monaten</span></div>
+          <div className="hl ctx">
+            {ctxv.map((m) => (
+              <div key={m.k} className="hli">
+                <span>{m.label}</span>
+                <b>{m.value}<small className="note">{m.unit}</small></b>
+                {m.delta != null && <em className={m.good === true ? "up" : m.good === false ? "down" : ""}>{m.delta > 0 ? "+" : ""}{Math.abs(m.delta) < 10 ? m.delta.toFixed(1) : Math.round(m.delta)} % vs. Ø {m.base}</em>}
+                {m.pct != null && <small className="note">{m.pct}. Perzentil · 12 Mon.</small>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {recP.length > 0 && (
         <section className="panel">
@@ -150,12 +226,10 @@ export default async function Heute() {
 
       {T && [T.sleepScore, T.bbHigh, T.stress, T.spo2, T.resp, T.readiness, T.vo2max, T.deep].some((v) => v != null) && (
         <section className="panel">
-          <div className="panel-head"><h2>Garmin-Details letzte Nacht</h2><span className="note">Schlaf, Erholung, Atmung</span></div>
+          <div className="panel-head"><h2>Weitere Details letzte Nacht</h2><span className="note">Schlafphasen und Zusatzwerte</span></div>
           <div className="hl" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))" }}>
-            {[["Sleep Score", T.sleepScore, (v) => Math.round(v), "/100"], ["Body Battery max", T.bbHigh, (v) => Math.round(v), ""], ["Body Battery min", T.bbLow, (v) => Math.round(v), ""],
-              ["Stress Ø", T.stress, (v) => Math.round(v), ""], ["Training Readiness", T.readiness, (v) => Math.round(v), ""], ["SpO2 Ø", T.spo2, (v) => Math.round(v), " %"],
-              ["Atmung", T.resp, (v) => v.toFixed(1), " /min"], ["Puls im Schlaf", T.sleepHr, (v) => Math.round(v), " bpm"], ["VO2max", T.vo2max, (v) => v.toFixed(1), ""],
-              ["Hauttemperatur", T.skinTemp, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`, " °C"], ["Intensitätsminuten", T.intensity, (v) => Math.round(v), ""]]
+            {[["Body Battery min", T.bbLow, (v) => Math.round(v), ""], ["Training Readiness", T.readiness, (v) => Math.round(v), ""], ["SpO2 Ø", T.spo2, (v) => Math.round(v), " %"],
+              ["Puls im Schlaf", T.sleepHr, (v) => Math.round(v), " bpm"], ["Hauttemperatur", T.skinTemp, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`, " °C"], ["Intensitätsminuten", T.intensity, (v) => Math.round(v), ""]]
               .filter(([, v]) => v != null).map(([l, v, f, u]) => <div key={l} className="hli"><span>{l}</span><b>{f(v)}<small className="note">{u}</small></b></div>)}
           </div>
           {T.deep != null && (() => {
@@ -203,7 +277,7 @@ export default async function Heute() {
         <div className="panel-head"><h2>Letzte Einheiten</h2><span className="note">Duplikate aus mehreren Quellen zusammengeführt</span></div>
         {activities.length ? (
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Datum</th><th>Einheit</th><th className="r">Dauer</th><th className="r">Ø Puls</th><th className="r">Ø Watt</th><th className="r">Last</th><th>Quellen</th></tr></thead>
+            <thead><tr><th>Datum</th><th>Einheit</th><th className="r">Dauer</th><th className="r">Ø Puls</th><th className="r">Ø Watt</th><th className="r">Last</th><th className="r">Gefühl</th><th>Quellen</th></tr></thead>
             <tbody>{activities.slice(0, 10).map((a) => (
               <tr key={a.provider + a.external_id}>
                 <td className="num">{a.day.slice(8, 10)}.{a.day.slice(5, 7)}.</td>
@@ -212,6 +286,7 @@ export default async function Heute() {
                 <td className="r num">{r0(a.avg_hr == null ? null : Number(a.avg_hr))}</td>
                 <td className="r num">{r0(a.np_power || a.avg_power ? Number(a.np_power || a.avg_power) : null)}</td>
                 <td className="r num">{Math.round(a.load)}</td>
+                <td className="r num">{a.rpe ? `${a.rpe}/10` : "–"}{a.region && a.category === "str" ? <span className="src">{{ legs: "Beine", upper: "Oberk.", full: "Ganzk." }[a.region]}</span> : null}</td>
                 <td>{a.sources.map((s) => <span key={s} className="src" style={{ marginLeft: 0, marginRight: 4 }}>{PNAME[s] || s}</span>)}</td>
               </tr>))}</tbody>
           </table></div>

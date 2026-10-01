@@ -72,11 +72,12 @@ export async function startDemo() {
     u = await repo.updateUser(u.id, { demo: true, weight_kg: 76, birth_year: 1990 });
   }
   const today = todayIso();
-  if (u.demo_day !== today) {
+  const DEMO_VERSION = 2; // erhöhen, wenn sich die Beispieldaten ändern
+  if (u.demo_day !== today || u.demo_ver !== DEMO_VERSION) {
     await seedDemo(u.id, 76, { rich: true });
     const { days } = await buildSeries(u.id, today, today);
     await repo.saveAdvice(u.id, today, demoAdvice(today, days[days.length - 1]?.score ?? null));
-    u = await repo.updateUser(u.id, { demo_day: today });
+    u = await repo.updateUser(u.id, { demo_day: today, demo_ver: DEMO_VERSION });
   }
   await createSession(u);
   redirect("/heute");
