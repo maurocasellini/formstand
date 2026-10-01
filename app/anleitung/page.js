@@ -68,6 +68,7 @@ export default async function Anleitung() {
             <li>In intervals.icu links auf <b>Einstellungen</b> (Settings) gehen.</li>
             <li>Bei <b>Garmin Connect</b> auf <b>Verbinden</b> klicken, mit deinem Garmin-Login anmelden und den Zugriff erlauben. Wichtig: auch die <b>Wellness-Daten</b> (Schlaf, HFV/HRV, Ruhe-HF) erlauben, sonst fehlt die Tagesform.</li>
             <li>Gleich dort kannst du alles weitere anhängen, das du nutzt: <b>WHOOP, Polar, Oura, Zwift, Wahoo, COROS, Suunto</b> … Formstand bekommt dann alles gesammelt über intervals.icu. intervals.icu ist damit deine Hauptquelle.</li>
+            <li><b>Strava in intervals.icu bringt Formstand nichts:</b> Einheiten, die nur über Strava kommen, darf intervals.icu nicht weitergeben. Darum Uhr und Zwift direkt verbinden. Für ältere Strava-Einheiten gibt es in intervals.icu „Import All Strava Data“ – danach sind sie auch für Formstand da.</li>
           </ol>
           <h3>c) API-Schlüssel in intervals.icu holen</h3>
           <ol>
@@ -91,15 +92,15 @@ export default async function Anleitung() {
             <li>Auf <a href="https://connect.garmin.com" target="_blank" rel="noreferrer">connect.garmin.com</a> anmelden (am Computer).</li>
             <li>Profilbild → <b>Kontoeinstellungen</b> → <b>Datenverwaltung</b> → <b>Daten exportieren</b> → Export anfordern.</li>
             <li>Garmin schickt nach einigen Stunden bis Tagen einen Download-Link per E-Mail. ZIP herunterladen.</li>
-            <li>In Formstand unter <b>Quellen → Garmin-Datenexport einlesen</b> die ZIP-Datei auswählen. Sie wird im Browser entpackt, nur die Werte werden übertragen.</li>
+            <li>In Formstand unter <b>Quellen → Weitere Verbindungen → Garmin-Datenexport</b> die ZIP-Datei auswählen. Sie wird im Browser entpackt, nur die Werte werden übertragen.</li>
           </ol>
         </Step>
 
         <Step n="5" id="strava" title="Optional: Strava separat" time="1 Minute">
           <ul>
             <li><b>Zwift, WHOOP, Polar, Oura &amp; Co.:</b> am einfachsten direkt in intervals.icu verbinden (Schritt 3). Dann ist hier nichts weiter nötig.</li>
-            <li><b>Strava:</b> nur nötig, wenn Workouts <i>nur</i> auf Strava landen. Quellen → <b>Mit Strava verbinden</b> → bei Strava anmelden → Zugriff erlauben. Doppelte Einheiten werden zusammengeführt.</li>
-            <li><b>WHOOP direkt:</b> geht auch über Quellen → <b>Mit WHOOP verbinden</b>, liefert zusätzlich Strain und Recovery. Nicht nötig, wenn WHOOP schon in intervals.icu hängt.</li>
+            <li><b>Strava:</b> nur nötig, wenn Workouts <i>nur</i> auf Strava landen. Quellen → <b>Weitere Verbindungen</b> → <b>Mit Strava verbinden</b> → bei Strava anmelden → Zugriff erlauben. Doppelte Einheiten werden zusammengeführt.</li>
+            <li><b>WHOOP direkt:</b> geht auch über Quellen → <b>Weitere Verbindungen</b> → <b>Mit WHOOP verbinden</b>, liefert zusätzlich Strain und Recovery. Nicht nötig, wenn WHOOP schon in intervals.icu hängt.</li>
           </ul>
           <p className="note">Steht bei Strava oder WHOOP „noch nicht freigeschaltet“, muss der Admin das einmalig erledigen (siehe unten).</p>
         </Step>

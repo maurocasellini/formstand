@@ -339,3 +339,10 @@ td.wrap{white-space:normal}
 .planform:has(select[name=mode] option[value=session]:checked) .only-session{display:flex}
 .planform:has(select[name=mode] option[value=session]:checked) .only-repeat,.planform:has(select[name=mode] option[value=off]:checked) .only-repeat,.planform:has(select[name=mode] option[value=max]:checked) .only-repeat{display:flex}
 .chk-l{display:flex;gap:8px;align-items:center;font-size:14px}
+.srcs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.main-src h3,.more h3{font-size:14px;margin:4px 0 6px}
+.main-src{border:1px solid var(--accent)}
+details.more>summary{cursor:pointer;font-weight:700;font-size:15px;display:flex;gap:8px;align-items:baseline}
+details.more[open]>summary{margin-bottom:12px}
+details.more{display:block}
+details.more .cards{margin-bottom:16px}
