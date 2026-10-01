@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { changePassword, updateAccount } from "../../actions-auth";
 import ActionForm from "@/components/ActionForm";
 import PushToggle from "@/components/PushToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import { vapid } from "@/lib/push";
 import { savePushSub, deletePushSub, testPush } from "../../actions-data";
 
@@ -39,6 +40,10 @@ export default async function Konto({ searchParams }) {
           {pub ? <PushToggle publicKey={pub} save={savePushSub} remove={deletePushSub} test={testPush} /> : <p className="notice warn">Erinnerungen sind gerade nicht verfügbar ({pushError}).</p>}
         </section>
       )}
+      <section className="panel">
+        <div className="panel-head"><h2>Darstellung</h2><ThemeToggle withLabel /></div>
+        <p className="muted">Hell, dunkel oder wie dein Gerät eingestellt ist. Tippen wechselt; gilt pro Gerät. Oben in der Leiste geht es auch.</p>
+      </section>
     </>
   );
 }

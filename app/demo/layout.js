@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import ThemeToggle from "@/components/ThemeToggle";
 import BackLink from "@/components/BackLink";
 import Logo from "@/components/Logo";
 import ReadOnly from "@/components/ReadOnly";
@@ -16,6 +17,7 @@ export default function DemoLayout({ children }) {
           <div className="bar-top">
             <Link href="/demo" className="logo"><Logo /><b>Formstand</b><span className="tag next" style={{ marginLeft: 6 }}>Demo</span></Link>
             <div className="who">
+              <ThemeToggle />
               <Link className="btn ghost sm" href="/login">Anmelden</Link>
               <Link className="btn sm" href="/register">Eigenes Konto</Link>
             </div>

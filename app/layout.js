@@ -10,11 +10,15 @@ export const metadata = {
   appleWebApp: { capable: true, title: "Formstand", statusBarStyle: "default" },
   icons: { apple: "/apple-touch-icon.png" },
 };
-export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F5F7FB" };
+export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: [{ media: "(prefers-color-scheme: light)", color: "#F5F7FB" }, { media: "(prefers-color-scheme: dark)", color: "#0B1020" }] };
+
+// Gewählte Darstellung vor dem ersten Zeichnen setzen (kein Aufblitzen)
+const THEME_JS = `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="de-CH" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="de-CH" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_JS }} /></head>
       <body>{children}</body>
     </html>
   );

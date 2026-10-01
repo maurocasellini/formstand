@@ -189,7 +189,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
               <div key={w} className="card">
                 <div className="t">{WEAKNESSES[w][0]}{idx === 0 && <span className="tag on">Hauptschwäche</span>}</div>
                 <p>{WEAKNESSES[w][1]}</p>
-                <div className="bar"><i style={{ width: `${planned ? Math.min(100, (done / planned) * 100) : 0}%` }} /></div>
+                <div className="pbar"><i style={{ width: `${planned ? Math.min(100, (done / planned) * 100) : 0}%` }} /></div>
                 <p><b>{done}</b> von {planned} geplanten Fokus-Einheiten umgesetzt</p>
                 {met && <p>{met}</p>}
               </div>

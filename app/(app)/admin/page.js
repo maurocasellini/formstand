@@ -65,7 +65,7 @@ export default async function Admin() {
             {ai.key && (
               <div className="aicost">
                 <div><b>{usd(um.usd)}</b><small>diesen Monat · {um.calls} Aufrufe{ai.monthlyCapUsd > 0 ? ` · Limit ${usd(ai.monthlyCapUsd)}` : ""}</small></div>
-                {ai.monthlyCapUsd > 0 && <div className="bar"><i style={{ width: `${Math.min(100, (um.usd / ai.monthlyCapUsd) * 100)}%`, background: um.usd >= ai.monthlyCapUsd ? "var(--crit)" : "var(--accent)" }} /></div>}
+                {ai.monthlyCapUsd > 0 && <div className="pbar"><i style={{ width: `${Math.min(100, (um.usd / ai.monthlyCapUsd) * 100)}%`, background: um.usd >= ai.monthlyCapUsd ? "var(--crit)" : "var(--accent)" }} /></div>}
                 <small className="note">{Object.entries(um.kinds).map(([k, v]) => `${{ advice: "Erklärungen", inbody: "InBody", photo: "Fotovergleich" }[k] || k}: ${usd(v.usd)} (${v.calls}×)`).join(" · ") || "Noch keine Aufrufe."}</small>
                 {Object.keys(um.users).length > 0 && <small className="note">Pro Person: {Object.entries(um.users).map(([id, v]) => `${names[id] || "System"} ${usd(v.usd)}`).join(" · ")}</small>}
               </div>

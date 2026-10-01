@@ -183,7 +183,7 @@ export default async function Heute({ demo } = {}) {
         return (
           <section className="panel onb">
             <div className="panel-head"><h2>Erste Schritte · {done}/{steps.length}</h2><Link className="note" href="/anleitung">Ganze Anleitung →</Link></div>
-            <div className="bar"><i style={{ width: `${(done / steps.length) * 100}%` }} /></div>
+            <div className="pbar"><i style={{ width: `${(done / steps.length) * 100}%` }} /></div>
             <ol className="onb-l">{steps.map(([t, ok, href, help]) => (
               <li key={t} className={ok ? "ok" : ""}><span className="chk">{ok ? "✓" : ""}</span>{ok ? <span>{t}</span> : <Link href={href}>{t}</Link>}{!ok && <Link className="note" href={help}>wie?</Link>}</li>
             ))}</ol>

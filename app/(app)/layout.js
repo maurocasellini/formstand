@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import ThemeToggle from "@/components/ThemeToggle";
 import BackLink from "@/components/BackLink";
 import Logo from "@/components/Logo";
 import SubjectPicker from "@/components/SubjectPicker";
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }) {
               <Link href="/konto" className="logo" style={{ gap: 8 }} title="Mein Konto"><span className="ava">{initials}</span>
               <span style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span></Link>
               <span className="role">{ROLE[viewer.role]}</span>
+              <ThemeToggle />
               <Link className="btn ghost sm" href="/anleitung" title="Schritt-für-Schritt-Anleitung">Anleitung</Link>
               <form action={logout}><button className="btn ghost sm" type="submit">Abmelden</button></form>
             </div>
