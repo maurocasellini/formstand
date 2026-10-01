@@ -66,7 +66,7 @@ export async function saveApp(_prev, form) {
     const apiKey = String(form.get("apiKey") || "").trim();
     if (apiKey && !apiKey.startsWith("sk-ant-")) return { error: "Das sieht nicht nach einem Claude-API-Schlüssel aus (beginnt mit sk-ant-)." };
     const cur = (await repo.getSettings()).apps?.anthropic || {};
-    if (!apiKey && !cur.apiKey) return { error: "API-Schlüssel eintragen." };
+    if (!apiKey && !cur.apiKey && !process.env.ANTHROPIC_API_KEY) return { error: "API-Schlüssel fehlt: in Vercel als ANTHROPIC_API_KEY hinterlegen." };
     if (apiKey) {
       try { await aiClient(apiKey).models.list({ limit: 1 }); }
       catch (e) { if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return { error: "Claude lehnt den Schlüssel ab. Bitte prüfen." }; }

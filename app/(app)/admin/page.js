@@ -71,7 +71,9 @@ export default async function Admin() {
             )}
             <ActionForm action={saveApp} className="stack" submit={ai.key ? "Aktualisieren" : "Freischalten"}>
               <input type="hidden" name="provider" value="anthropic" />
-              <label className="f">API-Schlüssel{ai.key ? " (gespeichert, nur zum Ändern ausfüllen)" : ""}<input type="password" name="apiKey" autoComplete="off" placeholder="sk-ant-…" /></label>
+              {ai.source === "env"
+                ? <p className="note">API-Schlüssel kommt aus Vercel (ANTHROPIC_API_KEY) und ist hier nicht sichtbar.</p>
+                : <label className="f">API-Schlüssel{ai.key ? " (gespeichert, nur zum Ändern ausfüllen)" : " – besser in Vercel als ANTHROPIC_API_KEY hinterlegen"}<input type="password" name="apiKey" autoComplete="off" placeholder="sk-ant-…" /></label>}
               <div className="form">
                 <label className="f">Tageserklärung<select name="adviceModel" defaultValue={ai.adviceModel}>{Object.entries(MODELS).map(([id, m]) => <option key={id} value={id}>{m.name} · ${m.price[0]}/${m.price[1]} pro Mio.</option>)}</select></label>
                 <label className="f">InBody & Fotos<select name="visionModel" defaultValue={ai.visionModel}>{Object.entries(MODELS).map(([id, m]) => <option key={id} value={id}>{m.name} · ${m.price[0]}/${m.price[1]} pro Mio.</option>)}</select></label>
@@ -79,7 +81,7 @@ export default async function Admin() {
               </div>
             </ActionForm>
             <p className="note">Empfohlen: Haiku für die Erklärung (formuliert nur, ca. $0.005 pro Tag und Person), Sonnet fürs Lesen von Blättern und Fotos (Genauigkeit). Ist das Limit erreicht, läuft Formstand ohne KI-Texte weiter.</p>
-            {ai.key && <form action={removeApp}><input type="hidden" name="provider" value="anthropic" /><button className="btn danger sm" type="submit">Entfernen</button></form>}
+            {ai.source === "app" && <form action={removeApp}><input type="hidden" name="provider" value="anthropic" /><button className="btn danger sm" type="submit">Entfernen</button></form>}
           </div>
         </div>
         <p className="note">Garmin läuft ohne Freischaltung über intervals.icu (jede Person trägt ihren eigenen Schlüssel unter „Quellen“ ein) und über den Garmin-Datenexport.</p>
