@@ -3,7 +3,7 @@ import { pageContext } from "@/lib/subject";
 import QuickLinks from "@/components/QuickLinks";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
-import { TRIGGERS, triggerName } from "@/lib/catalog";
+import { TRIGGERS, triggerName, WEAKNESSES } from "@/lib/catalog";
 import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
@@ -78,6 +78,56 @@ function Decision({ d, a }) {
   );
 }
 
+// Oben auf einen Blick: Erholung & Schlaf · Trainingsbereitschaft · Fokus heute
+const sg = (v, d = 0) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`;
+function Glance({ T, st, cx, decision, advice, base }) {
+  const m = Object.fromEntries((cx || []).map((x) => [x.k, x]));
+  const sl = st?.states?.sleep, cardio = st?.states?.cardio;
+  const whoop = T?.prov?.whoop?.recovery;
+  const night = [
+    m.sleep && `Schlaf ${m.sleep.value} h${m.sleep.base != null ? ` (${sg((m.sleep.value - m.sleep.base) * 60)} min vs. Ø)` : ""}`,
+    m.hrv && `HRV ${m.hrv.value} ms${m.hrv.delta != null ? ` (${sg(m.hrv.delta)} %)` : ""}`,
+    m.rhr && `Ruhepuls ${m.rhr.value}${m.rhr.base != null ? ` (${sg(m.rhr.value - m.rhr.base)})` : ""}`,
+    m.sleepScore && `Sleep Score ${m.sleepScore.value}`,
+    whoop != null && `WHOOP Recovery ${Math.round(whoop)} %`,
+  ].filter(Boolean);
+  const recVal = sl?.value ?? cardio?.value ?? null;
+  const ready = T?.score ?? null;
+  const focusWhy = st?.limiter ? `Limiter: ${st.limiter.name}${st.limiter.why ? ` – ${st.limiter.why}` : ""}` : decision?.why?.[0];
+  return (
+    <section className="glance">
+      <div className={`gl ${stateOf(recVal)}`}>
+        <span className="gl-k">Erholung & Schlaf</span>
+        {night.length ? <>
+          <b className="gl-v">{recVal ?? "–"}<small>/100</small></b>
+          <ul>{night.slice(0, 4).map((t) => <li key={t}>{t}</li>)}</ul>
+        </> : <>
+          <b className="gl-v muted">keine Nachtdaten</b>
+          <p className="note">HRV, Ruhepuls und Schlaf von heute fehlen. Garmin-App öffnen und synchronisieren; in intervals.icu bei Garmin die Wellness-Daten erlauben. <Link href={base ? "/register" : "/quellen"}>Quellen →</Link></p>
+        </>}
+      </div>
+      <div className={`gl ${stateOf(ready)}`}>
+        <span className="gl-k">Trainingsbereitschaft</span>
+        <b className="gl-v">{ready ?? "–"}<small>/100</small></b>
+        <span className={`pill ${stateOf(ready)}`}>{stateText(ready)}</span>
+        {st && <p className="note">{st.limiter ? `Bremst: ${st.limiter.name}` : "Kein Bereich bremst"} · Datenqualität {st.quality.level}</p>}
+      </div>
+      <a className={`gl focus ${decision?.state || ""}`} href="#entscheidung">
+        <span className="gl-k">Fokus heute</span>
+        {decision ? <>
+          {(() => {
+            const t = advice?.headline || decision.title.replace(/^Heute: /, "");
+            const sub = [t.toLowerCase().includes(String(decision.main.what).toLowerCase()) ? null : decision.main.what, decision.main.min ? `${decision.main.min} min` : null, decision.planned?.focus ? `Fokus ${WEAKNESSES[decision.planned.focus]?.[0] || ""}` : null].filter(Boolean).join(" · ");
+            return <><b className="gl-t">{t}</b>{sub && <span className="gl-m">{sub}</span>}</>;
+          })()}
+          {focusWhy && <p className="note">{focusWhy}</p>}
+          <span className="gl-more">Details ↓</span>
+        </> : <p className="note">Kurz einchecken – dann steht hier, worauf es heute ankommt.</p>}
+      </a>
+    </section>
+  );
+}
+
 export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual } = await todayModel(subject.id);
@@ -114,6 +164,8 @@ export default async function Heute({ demo } = {}) {
           <Link className="btn ghost sm" href={base ? "/register" : "/quellen"}>Quellen verwalten</Link>
         </div>
       </div>
+
+      {hasAny && <Glance T={T} st={st} cx={ctxv} decision={decision} advice={fresh} base={base} />}
 
       <QuickLinks base={base} demo={Boolean(viewer.demo)} />
 
@@ -185,7 +237,7 @@ export default async function Heute({ demo } = {}) {
             </div>
           )}
         </div>
-        <div className="panel">
+        <div className="panel" id="entscheidung">
           <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
           {decision ? <Decision d={decision} a={fresh} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
           {viewer.demo || !decision ? null : ai ? (
