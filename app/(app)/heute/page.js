@@ -15,6 +15,8 @@ import { aiReady } from "@/lib/ai";
 import { getTodayAdvice, todayModel } from "@/lib/coach";
 import { ACT_LABEL } from "@/lib/adherence";
 import ActionForm from "@/components/ActionForm";
+import Targets from "@/components/Targets";
+import { targetsOf } from "@/lib/targets";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
 const r1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1));
@@ -138,7 +140,8 @@ function Next({ items, today, week, phase, learned, base }) {
 
 export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
-  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming } = await todayModel(subject.id);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = await todayModel(subject.id);
+  const tg = targetsOf(goals, manual, all, today);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
   const ck = T?.checkin || null;
@@ -220,6 +223,15 @@ export default async function Heute({ demo } = {}) {
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
         </section>
+      )}
+
+      {tg.length > 0 ? (
+        <section className="panel">
+          <div className="panel-head"><h2>Deine Ziele · auf Kurs?</h2><span className="note">{tg.filter((t) => t.tone === "good").length} von {tg.filter((t) => !t.free).length} im Plan</span></div>
+          <Targets list={tg} compact base={base} />
+        </section>
+      ) : hasAny && !viewer.demo && (
+        <div className="notice">Noch keine messbaren Ziele. <Link href={`${base}/ziele#meineziele`}>Ziel setzen →</Link> – z. B. 5 kg weniger bis Juni oder Kniebeuge 120 kg. Plan, Ernährung und Empfehlungen richten sich dann danach.</div>
       )}
 
       {hasGoals && upcoming?.length > 0 && <Next items={upcoming} today={today} week={week} phase={phase} learned={learned} base={base} />}

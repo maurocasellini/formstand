@@ -2,8 +2,11 @@ import { pageContext } from "@/lib/subject";
 import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
-import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
-import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia } from "../../actions-data";
+import { TEST_TYPES, TEST_GROUPS, TEST_DURATIONS, testText, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
+import TestForm from "@/components/TestForm";
+import FitnessProfile from "@/components/FitnessProfile";
+import { fitnessProfile } from "@/lib/fitness";
+import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia, adoptWeaknesses } from "../../actions-data";
 import FilePick from "@/components/FilePick";
 import { aiReady } from "@/lib/ai";
 import EveningForm from "@/components/EveningForm";
@@ -27,7 +30,13 @@ export default async function Eingaben({ demo } = {}) {
   const entries = allMan.slice(0, 60);
   const tests = allMan.filter((e) => e.kind === "test");
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr), css = tests.find((t) => TEST_TYPES[t.data?.test]?.css);
-  const kg = Number(subject.weight_kg) || null;
+  const wLast = allMan.find((e) => e.kind === "weight");
+  const kg = (wLast ? Number(wLast.value) : Number(subject.weight_kg)) || null;
+  const goals = await repo.getGoals(subject.id);
+  const goalsWeak = [goals.mainWeakness, ...(goals.weaknesses || [])].filter(Boolean);
+  const fp = fitnessProfile(allMan, { sex: subject.sex, kg, goals, profile: subject, today });
+  // Für den Client nur, was das Formular braucht
+  const formTypes = Object.fromEntries(Object.entries(TEST_TYPES).map(([k, t]) => [k, { group: t.group, fmt: t.fmt, dur: Boolean(t.dur), name: t.name, label: t.label, desc: t.desc, unit: t.unit, dist: t.dist || null, per: t.per || null }]));
   const own = (await repo.getActivities(subject.id)).filter((a) => a.provider === "manual").sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
 
   // Persönliche Trigger-Auswertung (12 Monate)
@@ -105,23 +114,19 @@ export default async function Eingaben({ demo } = {}) {
 
       <section className="grid2e">
         <div className="panel">
-          <h2 id="test">Leistungstest eintragen</h2>
+          <h2 id="test">Test eintragen</h2>
+          <TestForm action={addManual} types={formTypes} groups={TEST_GROUPS} durations={TEST_DURATIONS} today={today} start={fp.tests.length || !ftp ? "kraft" : "diagnostik"} />
           {!viewer.demo && (
-            <ActionForm action={uploadMedia} className="stack" submit="Hochladen & auslesen" busy="Liest aus… (ca. 15 s)">
-              <input type="hidden" name="kind" value="test" />
-              <FilePick name="file" accept="image/*,application/pdf" multiple hint="Screenshot oder PDF: Zwift-Ergebnis, Garmin-Laktatschwelle, Laborbericht, Schwimmtest …" />
-              <input type="hidden" name="day" value={today} />
-            </ActionForm>
+            <details className="stack">
+              <summary className="note" style={{ cursor: "pointer", fontWeight: 600 }}>Oder Screenshot/PDF hochladen – die KI liest die Werte aus</summary>
+              <ActionForm action={uploadMedia} className="stack" submit="Hochladen & auslesen" busy="Liest aus… (ca. 15 s)">
+                <input type="hidden" name="kind" value="test" />
+                <FilePick name="file" accept="image/*,application/pdf" multiple hint="Zwift, Garmin, Laborbericht, Concept2, Strava, Notizen mit Kraftwerten …" />
+                <input type="hidden" name="day" value={today} />
+              </ActionForm>
+              <p className="note">{ai ? "Testart, Datum und Werte werden ausgelesen – ein Bericht kann mehrere Werte liefern. Die Datei bleibt unter Körper → Dokumente." : "Automatisches Auslesen braucht die KI (Admin → Schnittstellen)."}</p>
+            </details>
           )}
-          <p className="note">{ai ? "Die KI liest Testart, Datum und Werte aus – ein Laborbericht kann mehrere Werte liefern (z. B. Schwellenpuls und VO2max). Die Datei bleibt unter Körper → Dokumente erhalten." : "Automatisches Auslesen braucht die KI (Admin → Schnittstellen)."} Oder von Hand:</p>
-          <ActionForm action={addManual}>
-            <input type="hidden" name="kind" value="test" />
-            <label className="f">Test<select name="test">{Object.entries(TEST_TYPES).map(([k, t]) => <option key={k} value={k}>{t.name} · {t.label}</option>)}</select></label>
-            <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
-            <label className="f">Wert<input type="number" name="value" min="1" max="2000" required /></label>
-            <label className="f">Notiz<input type="text" name="note" maxLength={80} placeholder="z. B. Pace 4:45/km" /></label>
-          </ActionForm>
-          <div className="cards">{Object.entries(TEST_TYPES).slice(0, 5).map(([k, t]) => <div key={k} className="card"><div className="t">{t.name}</div><p>{t.desc}</p></div>)}</div>
         </div>
         <div className="panel">
           <h2>{ftp ? `Rad-Zonen · FTP ${Number(ftp.value)} W${kg ? ` · ${(Number(ftp.value) / kg).toFixed(1)} W/kg` : ""}` : "Zonen"}</h2>
@@ -148,6 +153,12 @@ export default async function Eingaben({ demo } = {}) {
       </section>
 
       <section className="panel">
+        <div className="panel-head"><h2 id="fitness">Fitness-Profil</h2><span className="note">Kraft, Lauf & Rudern, Grundlagenfitness – eingestuft und mit deinen Zielen verknüpft</span></div>
+        {fp.tests.length ? <FitnessProfile fp={fp} goalsWeak={goalsWeak} adopt={adoptWeaknesses} setSex={updateProfile} ro={viewer.demo} />
+          : <div className="empty">Noch keine Kraft- oder Fitnesstests. Ein guter Start-Check (ca. 60 min, an 1–2 Tagen): Kniebeuge und Bankdrücken mit 3–5 Wiederholungen, Kreuzheben, 1 km Lauf oder 2000 m Rudern, 5 min Burpees, Plank und Klimmzüge. Formstand stuft jede Leistung ein und schlägt vor, woran wir arbeiten.</div>}
+      </section>
+
+      <section className="panel">
         <div className="panel-head"><h2>Letzte Eingaben</h2><span className="note">{entries.length} angezeigt</span></div>
         {entries.length ? (
           <div className="tbl-wrap"><table>
@@ -156,7 +167,7 @@ export default async function Eingaben({ demo } = {}) {
               <tr key={e.id}>
                 <td className="num">{fmt(e.day)}</td>
                 <td>{KIND[e.kind] || e.kind}{e.source_media && <span className="src">aus InBody</span>}{e.is_demo && <span className="src">Beispiel</span>}</td>
-                <td className="num">{e.kind === "inbody" ? (e.data?.inbody_score != null ? `Score ${e.data.inbody_score}` : "") : e.value == null ? "" : Number(e.value)}{e.kind === "inbody" ? "" : e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? (e.data?.test === "css" ? ` s (${pace(Number(e.value))}/100 m)` : ` ${TEST_TYPES[e.data?.test]?.unit || ""}`) : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
+                <td className="num">{e.kind === "inbody" ? (e.data?.inbody_score != null ? `Score ${e.data.inbody_score}` : "") : e.kind === "test" ? testText(e.data?.test, e.value, e.data) : e.value == null ? "" : Number(e.value)}{e.kind === "inbody" ? "" : e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? "" : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
                 <td className="wrap">{e.kind === "inbody" ? ["smm_kg", "fat_mass_kg", "body_fat_pct", "visceral_level"].filter((f) => e.data?.[f] != null).map((f) => `${INBODY_FIELDS[f][0]} ${e.data[f]}${INBODY_FIELDS[f][1] ? " " + INBODY_FIELDS[f][1] : ""}`).join(" · ") : e.kind === "trigger" ? triggerName(e.data?.t) : e.kind === "test" ? `${TEST_TYPES[e.data?.test]?.name || e.data?.test}${e.data?.note ? " · " + e.data.note : ""}` : e.data?.text || ""}</td>
                 <td><form action={deleteManual}><input type="hidden" name="id" value={e.id} /><button className="x" type="submit" aria-label="Löschen">✕</button></form></td>
               </tr>))}</tbody>

@@ -8,7 +8,7 @@ import { viewerAndSubject } from "@/lib/subject";
 import { seedDemo, clearDemo } from "@/lib/demo";
 import { syncUser, syncConnection, athleteZones } from "@/lib/sync";
 import { weekPlan, mondayOf } from "@/lib/plan";
-import { todayIso } from "@/lib/metrics";
+import { todayIso, buildSeries, addDays } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
 import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload } from "@/lib/ai";
@@ -17,7 +17,8 @@ import { runBodyAnalysis } from "@/lib/bodyai";
 import { applyTest } from "@/lib/testread";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
-import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES } from "@/lib/catalog";
+import { TARGET_METRICS, seriesOf, ambition, goalEffects } from "@/lib/targets";
+import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES, TEST_RANGE, TEST_DURATIONS, testText } from "@/lib/catalog";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -25,6 +26,8 @@ async function ctx() {
 }
 const DEMO = { error: "In der Demo kann man nur schauen. Mit eigenem Konto geht alles." };
 const dayOf = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : todayIso());
+// «3:35» → 215, «1:02:30» → 3750, «215» → 215
+const timeOf = (v) => { const p = String(v || "").replace(",", ".").split(":").map((x) => Number(x)); if (!p.length || p.some((x) => !Number.isFinite(x) || x < 0)) return null; const s = p.reduce((a, x) => a * 60 + x, 0); return s > 0 ? Math.round(s * 10) / 10 : null; };
 const numOf = (v) => { if (v == null || v === "") return null; const n = Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
 
 export async function addManual(_prev, form) {
@@ -35,11 +38,23 @@ export async function addManual(_prev, form) {
   const value = numOf(form.get("value"));
   const data = {};
   if (kind === "trigger") data.t = String(form.get("t") || "alkohol").slice(0, 40);
-  if (kind === "test") { data.test = String(form.get("test") || "ramp"); data.note = String(form.get("note") || "").slice(0, 80); }
+  let val = value;
+  if (kind === "test") {
+    data.test = String(form.get("test") || "ramp"); data.note = String(form.get("note") || "").slice(0, 80);
+    const t = TEST_TYPES[data.test];
+    if (!t) return { error: "Unbekannter Test." };
+    // Zeiten als m:ss (oder h:mm:ss / Sekunden)
+    if (t.fmt === "time" || t.fmt === "pace") { const raw = String(form.get("time") || form.get("value") || "").trim(); val = timeOf(raw); if (val == null) return { error: "Zeit bitte als m:ss eingeben, z. B. 3:35." }; }
+    if (t.fmt === "lift") { const r = Math.round(numOf(form.get("reps")) || 0); if (r < 1 || r > 5) return { error: "Wiederholungen 1–5 wählen." }; data.reps = r; }
+    if (t.dur) { const d = Math.round(numOf(form.get("dur")) || 0); if (!TEST_DURATIONS.includes(d)) return { error: "Dauer wählen." }; data.dur = d; }
+    const R = TEST_RANGE[data.test];
+    if (R && (val == null || val < R[0] || val > R[1])) return { error: `Wert ausserhalb des plausiblen Bereichs (${R[0]}–${R[1]}${t.fmt === "time" || t.fmt === "pace" ? " s" : ` ${t.unit}`}).` };
+  }
   if (kind === "note") data.text = String(form.get("text") || "").slice(0, 500);
   if (!["weight", "bodyfat", "trigger", "test", "note"].includes(kind)) return { error: "Unbekannte Eingabe." };
-  if (kind !== "note" && kind !== "trigger" && (value == null || value <= 0)) return { error: "Bitte einen gültigen Wert eingeben." };
-  await repo.addManual(subject.id, { day, kind, value: kind === "trigger" ? (value || 1) : value, data, created_by: viewer.id });
+  if (kind !== "note" && kind !== "trigger" && (val == null || val <= 0)) return { error: "Bitte einen gültigen Wert eingeben." };
+  await repo.addManual(subject.id, { day, kind, value: kind === "trigger" ? (value || 1) : val, data, created_by: viewer.id });
+  if (kind === "test") { revalidatePath("/", "layout"); return { ok: `Gespeichert: ${TEST_TYPES[data.test].name} ${testText(data.test, val, data)}.` }; }
   if (kind === "weight") await repo.updateUser(subject.id, { weight_kg: value });
   revalidatePath("/", "layout");
   return { ok: "Gespeichert." };
@@ -88,6 +103,7 @@ export async function updateProfile(_prev, form) {
   const patch = {};
   if (form.has("sport")) patch.sport = String(form.get("sport") || "").slice(0, 40) || null;
   if (form.has("birth_year")) patch.birth_year = numOf(form.get("birth_year"));
+  if (form.has("sex")) patch.sex = ["m", "w"].includes(String(form.get("sex"))) ? String(form.get("sex")) : null;
   if (form.has("weight_kg")) patch.weight_kg = numOf(form.get("weight_kg"));
   if (form.has("height_cm")) { const h = numOf(form.get("height_cm")); if (h != null && (h < 120 || h > 230)) return { error: "Grösse in cm, z. B. 182." }; patch.height_cm = h; }
   await repo.updateUser(subject.id, patch);
@@ -176,7 +192,7 @@ export async function uploadMedia(_prev, form) {
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
     if (kind === "test" && ai) {
-      try { const r = await applyTest(subject.id, m, buf, viewer.id); notes.push(`Test vom ${r.day.split("-").reverse().join(".")} übernommen: ${r.tests.map((t) => `${TEST_TYPES[t.test].label.replace(/ \(.*\)$/, "")} ${t.value} ${TEST_TYPES[t.test].unit}`).join(", ")}${r.hinweis ? ` (${r.hinweis})` : ""}`); }
+      try { const r = await applyTest(subject.id, m, buf, viewer.id); notes.push(`Test vom ${r.day.split("-").reverse().join(".")} übernommen: ${r.tests.map((t) => `${TEST_TYPES[t.test].name} ${testText(t.test, t.value, t)}`).join(", ")}${r.hinweis ? ` (${r.hinweis})` : ""}`); }
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
   }
@@ -355,6 +371,55 @@ export async function saveGoals(_prev, form) {
   revalidatePath("/", "layout");
   return { ok: "Gespeichert. Plan und Tagesentscheidung sind angepasst." };
 }
+// ---------- Messbare Ziele ----------
+export async function addTarget(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const metric = String(form.get("metric") || "");
+  const M = TARGET_METRICS[metric];
+  if (!M) return { error: "Bitte wählen, was du verbessern willst." };
+  const today = todayIso();
+  const by = String(form.get("by") || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(by) || by <= today) return { error: "Bitte ein Zieldatum in der Zukunft wählen." };
+  const note = String(form.get("note") || "").slice(0, 200) || null;
+  const t = { id: crypto.randomBytes(6).toString("hex"), metric, by, startDay: today, note, created_at: new Date().toISOString() };
+  if (metric === "free") {
+    t.label = String(form.get("label") || "").slice(0, 80);
+    if (!t.label) return { error: "Bitte das Ziel kurz beschreiben." };
+  } else {
+    const parse = (v) => (M.time ? timeOf(v) : numOf(v));
+    t.target = parse(form.get("target"));
+    if (t.target == null || t.target <= 0) return { error: M.time ? "Zielzeit als m:ss eingeben, z. B. 21:30." : "Bitte einen Zielwert eingeben." };
+    const [manual, series] = await Promise.all([repo.getManual(subject.id), buildSeries(subject.id, addDays(today, -120), today)]);
+    const s = seriesOf(metric, manual, series.all);
+    const startIn = parse(form.get("start"));
+    t.start = startIn ?? (metric === "weight" && s.length ? Math.round((s.slice(-7).reduce((a, x) => a + x.v, 0) / Math.min(7, s.length)) * 10) / 10 : s.at(-1)?.v ?? null);
+    if (t.start == null) return { error: `Für ${M.name} gibt es noch keinen Messwert – bitte den aktuellen Wert als Startwert eintragen${metric.startsWith("t:") ? " oder zuerst den Test machen" : ""}.` };
+    if (t.start === t.target) return { error: "Zielwert und Startwert sind gleich." };
+  }
+  const warn = t.metric === "free" ? null : ambition(metric, t.start, t.target, today, by).warn;
+  const current = { weight: Number(subject.weight_kg) || null };
+  let fx;
+  await repo.updateGoals(subject.id, (g) => {
+    const targets = [...(g.targets || []), t].slice(-6);
+    fx = goalEffects(targets, current);
+    // Ziele steuern Fokus und Ernährung: Abnehmziel → Abnehmen mit passendem Tempo; neutraler Fokus wird übersteuert
+    const focus = fx.focus && (!g.focus || ["maintain", "health", "performance"].includes(g.focus) || fx.focus === "cut") ? fx.focus : g.focus;
+    return { ...g, targets, focus, ...(fx.targetWeight ? { targetWeight: fx.targetWeight } : {}), ...(fx.targetBodyfat ? { targetBodyfat: fx.targetBodyfat } : {}), ...(fx.rate ? { rate: fx.rate } : {}), updated_at: new Date().toISOString() };
+  });
+  revalidatePath("/", "layout");
+  const own = goalEffects([t], current);
+  const eff = [own.focus === "cut" && fx.rate ? `Ernährung auf ${String(fx.rate).replace(".", ",")} % Gewichtsverlust pro Woche eingestellt` : own.focus === "muscle" ? "Fokus auf Muskelaufbau gestellt" : null, M.area && WEAKNESSES[M.area] ? `Wochenplan setzt Fokus-Einheiten für ${WEAKNESSES[M.area][0]}` : null].filter(Boolean);
+  return { ok: `Ziel gespeichert.${eff.length ? " " + eff.join(" · ") + "." : ""}${warn ? " Achtung: " + warn : ""}` };
+}
+export async function deleteTarget(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const id = String(form.get("id"));
+  await repo.updateGoals(subject.id, (g) => ({ ...g, targets: (g.targets || []).filter((t) => t.id !== id), updated_at: new Date().toISOString() }));
+  revalidatePath("/", "layout");
+}
+
 export async function addEvent(_prev, form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;

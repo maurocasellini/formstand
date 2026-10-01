@@ -8,7 +8,13 @@ import { bodyProgress } from "@/lib/body";
 import { periodReview, reviewText } from "@/lib/weekly";
 import * as repo from "@/lib/repo";
 import { FOCUS, EVENT_TYPES, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { saveGoals, addEvent, deleteEvent, savePlanDay, deleteFixed, findEvent } from "../../actions-data";
+import { saveGoals, addEvent, deleteEvent, savePlanDay, deleteFixed, findEvent, addTarget, deleteTarget, adoptWeaknesses } from "../../actions-data";
+import Targets from "@/components/Targets";
+import TargetForm from "@/components/TargetForm";
+import { FitnessWork } from "@/components/FitnessProfile";
+import { fitnessProfile } from "@/lib/fitness";
+import { targetsOf, currentValues, TARGET_METRICS } from "@/lib/targets";
+import { TEST_TYPES, testText } from "@/lib/catalog";
 import EventFinder from "@/components/EventFinder";
 import DayEditor from "@/components/DayEditor";
 import { aiReady } from "@/lib/ai";
@@ -46,6 +52,12 @@ export default async function Ziele({ searchParams, demo } = {}) {
   const weak = [goals.mainWeakness, ...(goals.weaknesses || [])].filter(Boolean);
   const nextA = (goals.events || []).find((e) => e.priority === "A" && e.date >= today);
   const ro = viewer.demo;
+  const tg = targetsOf(goals, manual, all, today);
+  const tMetrics = Object.fromEntries(Object.entries(TARGET_METRICS).map(([k, x]) => [k, { name: x.name, unit: x.unit, group: x.group, time: Boolean(x.time), step: x.step || 1 }]));
+  const kgNow = Number(m.user?.weight_kg) || null;
+  const fp = fitnessProfile(manual, { sex: subject.sex, kg: kgNow, goals, profile: subject, today });
+  // Test-Verlauf je Schwäche (z. B. Kraft Beine → Kniebeuge 1RM vorher/nachher)
+  const testFor = (w) => { const x = fp.tests.filter((t) => t.area === w && t.prev); return x.length ? x.map((t) => `${t.name}: ${t.prev.text} → ${t.text}`).join(" · ") : null; };
   const iv = intensityVerdict(intensityDist(all), intensityTarget({ goals, phase: m.hasGoals ? phase : null, weak }));
 
   // Fortschritt je Schwäche: absolvierte Fokus-Einheiten + passende Kennzahl
@@ -65,6 +77,18 @@ export default async function Ziele({ searchParams, demo } = {}) {
         {phase && <div className="phasebox"><span className="tag on">{phase.label}</span>{phase.event && phase.daysTo > 0 && <b>{phase.daysTo} Tage bis {phase.event.name}</b>}</div>}
       </div>
       {ro && <div className="notice warn">Demo: Ziele und Wettkämpfe sind Beispiele. Mit eigenem Konto trägst du hier deine eigenen ein.</div>}
+
+      <section className="panel">
+        <div className="panel-head"><h2 id="meineziele">Meine Ziele</h2><span className="note">Was willst du bis wann erreichen? Plan, Ernährung und KI richten sich danach.</span></div>
+        {tg.length ? <Targets list={tg} del={deleteTarget} ro={ro} /> : <p className="muted">Noch keine messbaren Ziele. Beispiele: Körpergewicht 78 kg bis 30.06., Kniebeuge 140 kg (1RM geschätzt) bis Ende Jahr, 5 km unter 22:00 bis zum Frühling.</p>}
+        {!ro && (
+          <details className="stack" open={!tg.length}>
+            <summary className="note" style={{ cursor: "pointer", fontWeight: 600 }}>+ Neues Ziel</summary>
+            <TargetForm action={addTarget} metrics={tMetrics} current={currentValues(manual, all)} today={today} minDay={addD(today, 7)} />
+          </details>
+        )}
+        <p className="note">So wirken Ziele: Ein Abnehmziel stellt die Ernährung auf das nötige Tempo ein (max. 1 % pro Woche). Ein Kraft-, Lauf- oder FTP-Ziel setzt Fokus-Einheiten im Wochenplan. Die KI bezieht sich in jeder Empfehlung darauf. Der Strich im Balken zeigt, wo du nach der verstrichenen Zeit stehen solltest.</p>
+      </section>
 
       <section className="panel">
         <div className="panel-head"><h2 id="plan">Wochenplan</h2>
@@ -125,6 +149,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
 
         <div className="panel">
           <h2 id="ziele">Fokus, Schwächen & Zeit</h2>
+          <FitnessWork fp={fp} goalsWeak={weak} adopt={adoptWeaknesses} ro={ro} base={base} link />
           <ActionForm action={saveGoals} className="stack goalform" submit="Speichern" reset={false}>
             <div className="f"><span className="lbl">Hauptziel</span>
               <div className="chips">{Object.entries(FOCUS).map(([k, [n, d]]) => <label key={k} title={d}><input type="radio" name="focus" value={k} defaultChecked={goals.focus === k} /><span>{n}</span></label>)}</div></div>
@@ -195,11 +220,12 @@ export default async function Ziele({ searchParams, demo } = {}) {
             const done = sum.focusDone[w] || 0, planned = sum.focusPlanned[w] || 0, met = metricFor(w);
             return (
               <div key={w} className="card">
-                <div className="t">{WEAKNESSES[w][0]}{idx === 0 && <span className="tag on">Hauptschwäche</span>}</div>
+                <div className="t">{WEAKNESSES[w][0]}{idx === 0 && <span className="tag on">Hauptschwäche</span>}{fp.areas[w] && <span className="tag">{fp.areas[w].level}</span>}</div>
                 <p>{WEAKNESSES[w][1]}</p>
                 <div className="pbar"><i style={{ width: `${planned ? Math.min(100, (done / planned) * 100) : 0}%` }} /></div>
                 <p><b>{done}</b> von {planned} geplanten Fokus-Einheiten umgesetzt</p>
                 {met && <p>{met}</p>}
+                {testFor(w) && <p>{testFor(w)}</p>}
               </div>
             );
           })}</div>
