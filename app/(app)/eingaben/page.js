@@ -4,6 +4,7 @@ import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS } from "@/lib/catalog";
 import { addManual, deleteManual, updateProfile } from "../../actions-data";
 import { INBODY_FIELDS } from "@/lib/ai";
+import { analyzeTriggers } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
 
 const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Trigger", test: "Leistungstest", note: "Notiz" };
@@ -19,15 +20,9 @@ export default async function Eingaben() {
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr);
   const kg = Number(subject.weight_kg) || null;
 
-  // Wirkung der Trigger auf den nächsten Morgen (12 Monate)
-  const { all } = await buildSeries(subject.id, addDays(today, -364), today);
-  const scored = all.filter((d) => d.score != null && d.day >= addDays(today, -364));
-  const clean = scored.filter((d) => !(d.night || []).length);
-  const impact = TRIGGERS.map(([k, n]) => {
-    const yes = scored.filter((d) => (d.night || []).some((t) => t.t === k));
-    if (yes.length < 2 || !clean.length) return null;
-    return { k, n, count: yes.length, dS: mean(yes.map((d) => d.score)) - mean(clean.map((d) => d.score)), dH: yes.every((d) => d.hrv) ? (mean(yes.map((d) => d.hrv)) / mean(clean.map((d) => d.hrv)) - 1) * 100 : null, dSl: (mean(yes.map((d) => d.sleep || 0)) - mean(clean.map((d) => d.sleep || 0))) * 60 };
-  }).filter(Boolean);
+  // Persönliche Trigger-Auswertung (12 Monate)
+  const { all, activities } = await buildSeries(subject.id, addDays(today, -364), today);
+  const trig = analyzeTriggers(all, activities);
 
   return (
     <>
@@ -56,15 +51,7 @@ export default async function Eingaben() {
             <label className="f">Trigger<select name="t" defaultValue="alkohol">{TRIGGERS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
             <label className="f">Menge<input type="number" name="value" min="1" max="20" defaultValue="1" /></label>
           </ActionForm>
-          <h3>Wirkung am nächsten Morgen · 12 Monate</h3>
-          {impact.length ? (
-            <table><tbody>{impact.map((i) => (
-              <tr key={i.k}><td><b>{i.n}</b> <span className="note">{i.count}×</span></td>
-                <td className="r num" style={{ color: i.dS < 0 ? "var(--crit)" : "var(--good)", fontWeight: 600 }}>{i.dS > 0 ? "+" : ""}{Math.round(i.dS)} Pkt.</td>
-                <td className="r num">{i.dH == null ? "" : `HRV ${i.dH > 0 ? "+" : ""}${Math.round(i.dH)} %`}</td>
-                <td className="r num">{`Schlaf ${i.dSl > 0 ? "+" : ""}${Math.round(i.dSl)} min`}</td></tr>
-            ))}</tbody></table>
-          ) : <div className="empty">Noch zu wenige Einträge mit Recovery-Daten.</div>}
+          <p className="note">Wie dein Körper am Morgen danach reagiert, steht unten unter „Deine Trigger“.</p>
         </div>
         <div className="panel">
           <h2>Profil</h2>
@@ -74,6 +61,24 @@ export default async function Eingaben() {
             <label className="f">Jahrgang<input type="number" name="birth_year" min="1930" max="2020" defaultValue={subject.birth_year ?? ""} /></label>
           </ActionForm>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Deine Trigger · was sie bei dir bewirken</h2><span className="note">Morgen danach vs. Morgen ohne Trigger am gleichen Wochentag · 12 Monate</span></div>
+        {trig.length ? <div className="trig">{trig.map((r) => {
+          const M = r.metrics, f = (m, dec = 0, unit = "") => (m?.diff == null || m.n < 3 ? null : `${m.diff > 0 ? "+" : "−"}${Math.abs(m.diff).toFixed(dec)}${unit}`);
+          const rows = [["HRV", f(M.hrv, 0, " %"), M.hrv, 1], ["Ruhepuls", f(M.rhr, 1, " bpm"), M.rhr, -1], ["Sleep Score", f(M.sleepScore, 0, " Pkt."), M.sleepScore, 1], ["Schlaf", f(M.sleep, 0, " min"), M.sleep, 1], ["Tagesform", f(M.score, 0, " Pkt."), M.score, 1]].filter((x) => x[1]);
+          return (
+            <div key={r.k} className={`card tcard lv-${r.level.replace(/ /g, "-")}`}>
+              <div className="t">{r.name}<span className="tag">{r.count}×</span></div>
+              {rows.length ? <ul>{rows.map(([n, v, m, dir]) => <li key={n}><span>{n}</span><b className={m.level === "kein klarer Effekt" ? "" : dir * m.diff < 0 ? "down" : "up"}>{v}</b></li>)}</ul> : <p>Noch keine Recovery-Daten zu diesen Abenden.</p>}
+              {r.recovery != null && r.recovery >= 0.3 && (r.level === "ziemlich sicher" || r.level === "Tendenz") && <p>Erholung: HRV im Schnitt nach <b>{r.recovery.toFixed(1)} Tagen</b> wieder normal ({r.recoveryN} Fälle)</p>}
+              {M.hrv?.doseLo != null && M.hrv?.doseHi != null && <p>Dosis: 1–2 Gl. HRV {M.hrv.doseLo > 0 ? "+" : "−"}{Math.abs(Math.round(M.hrv.doseLo))} % · 3+ Gl. {M.hrv.doseHi > 0 ? "+" : "−"}{Math.abs(Math.round(M.hrv.doseHi))} %</p>}
+              <p className="lv">{r.level}</p>
+            </div>
+          );
+        })}</div> : <div className="empty">Noch keine Trigger eingetragen. Trage z. B. Alkohol am Abend ein, nach einigen Wochen siehst du hier, was er bei dir bewirkt.</div>}
+        <p className="note">„Ziemlich sicher“ heisst: deutlicher Effekt über viele Abende. „Tendenz“: Richtung erkennbar, aber noch unsicher. „Training spät abends“ erkennt Formstand automatisch (Start nach 19 Uhr).</p>
       </section>
 
       <section className="grid2e">

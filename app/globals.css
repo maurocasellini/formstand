@@ -224,3 +224,16 @@ td.wrap{white-space:normal}
 .rate-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .rate-row > span:first-of-type{flex:1 1 220px}
 .rate-row select{height:36px}
+.adv dl div.main{background:var(--accent-soft)}
+.adv dl div.no{background:var(--crit-soft)}
+.adv dd ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.adv .nl{display:block;font-size:13px;color:var(--muted)}
+/* Trigger-Auswertung */
+.trig{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.tcard ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.tcard li{display:flex;justify-content:space-between;font-size:13px}
+.tcard li b{font-family:var(--font-mono);font-weight:500}
+.tcard .lv{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.tcard.lv-ziemlich-sicher .lv{color:var(--good)}
+.tcard.lv-Tendenz .lv{color:var(--warn)}
+.tcard.lv-ziemlich-sicher{border-color:var(--good)}

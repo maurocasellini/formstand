@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import * as repo from "@/lib/repo";
 import crypto from "node:crypto";
 import { createSession, destroySession, requireUser } from "@/lib/auth";
-import { seedDemo, demoAdvice } from "@/lib/demo";
-import { buildSeries, todayIso } from "@/lib/metrics";
+import { seedDemo } from "@/lib/demo";
+import { todayIso } from "@/lib/metrics";
 
 export async function login(_prev, form) {
   const u = await repo.findUserByLogin(form.get("login"));
@@ -72,11 +72,9 @@ export async function startDemo() {
     u = await repo.updateUser(u.id, { demo: true, weight_kg: 76, birth_year: 1990 });
   }
   const today = todayIso();
-  const DEMO_VERSION = 2; // erhöhen, wenn sich die Beispieldaten ändern
+  const DEMO_VERSION = 4; // erhöhen, wenn sich die Beispieldaten ändern
   if (u.demo_day !== today || u.demo_ver !== DEMO_VERSION) {
     await seedDemo(u.id, 76, { rich: true });
-    const { days } = await buildSeries(u.id, today, today);
-    await repo.saveAdvice(u.id, today, demoAdvice(today, days[days.length - 1]?.score ?? null));
     u = await repo.updateUser(u.id, { demo_day: today, demo_ver: DEMO_VERSION });
   }
   await createSession(u);

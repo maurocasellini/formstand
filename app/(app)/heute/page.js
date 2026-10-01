@@ -4,9 +4,9 @@ import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metric
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
 import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSession } from "../../actions-data";
-import { computeStates, personalContext, REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
+import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
-import { getTodayAdvice } from "@/lib/coach";
+import { getTodayAdvice, todayModel } from "@/lib/coach";
 import ActionForm from "@/components/ActionForm";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
@@ -24,31 +24,6 @@ function Dial({ s, delta }) {
       <div className="val"><div><b>{s ?? "–"}</b><small>{delta == null ? "von 100" : `${delta >= 0 ? "+" : ""}${delta} zu gestern`}</small></div></div>
     </div>
   );
-}
-
-function recommend(T, zones, st, ck) {
-  if (T?.score == null) return "Sobald Recovery-Daten da sind (Garmin, WHOOP, Oura) oder du eincheckst, steht hier die Tagesempfehlung.";
-  const s = T.score, F = zones.ftp, mins = ck?.time_min || null;
-  const w = (a, b) => (F ? ` (${Math.round(F * a)}–${Math.round(F * b)} W)` : "");
-  const dur = (std) => (mins ? Math.max(20, Math.min(std, mins - 10)) : std);
-  const legs = st?.states?.muscle?.regions?.legs?.value ?? 100, upper = st?.states?.muscle?.regions?.upper?.value ?? 100;
-  const lim = st?.limiter?.key;
-  let plan, avoid = null;
-  if (s < 34) { plan = `Erholung: Ruhetag oder ${dur(30)} min Zone 1${F ? ` (unter ${Math.round(F * 0.55)} W)` : ""}, dazu Mobility.`; avoid = "Intervalle und schweres Krafttraining."; }
-  else if (lim === "muscle" && legs < 50) { plan = upper >= 60 ? `Oberkörper-Kraft (${dur(45)} min) oder ${dur(45)} min lockeres Rad in Zone 1–2${w(0.5, 0.65)}.` : `${dur(40)} min lockere Bewegung und Mobility.`; avoid = "Schwere Beine: Kniebeugen, Kreuzheben, Laufintervalle, harte Radintervalle."; }
-  else if (lim === "sleep") { plan = `${dur(60)} min Zone 2${w(0.56, 0.72)}. Qualität lieber auf morgen schieben.`; avoid = "Hohe Intensität bei Schlafdefizit."; }
-  else if (lim === "stress") { plan = `${dur(45)} min locker draussen, Puls ruhig halten.`; avoid = "Zusätzlicher harter Reiz an einem stressigen Tag."; }
-  else if (s >= 67) { plan = `Qualitätstag: ${mins && mins < 60 ? "2×10" : "3×10"} min Sweet Spot${w(0.88, 0.93)} oder Laufintervalle${legs < 65 ? "; Beine sind noch nicht ganz frisch, lieber Rad" : ""}. Krafttraining schwer möglich.`; }
-  else { plan = `Moderat: ${dur(70)} min Zone 2${w(0.56, 0.75)}. Kraft nur mittel (RPE 7).`; }
-  const why = [...(st?.drivers || []), st?.limiter?.why].filter(Boolean).slice(0, 3);
-  return [
-    `Tagesform ${s}/100 · ${stateText(s)}`, "",
-    `Training: ${plan}`,
-    avoid ? `Nicht empfohlen: ${avoid}` : null,
-    mins ? `Zeit heute: ${mins} min eingeplant.` : null,
-    `Erholung: ${T.sleep != null ? `Schlaf ${r1(T.sleep)} h. ${T.sleep < 7 ? "Heute 30 min früher ins Bett." : "Rhythmus halten."}` : "Keine Schlafdaten."}`,
-    why.length ? `Warum: ${why.join(" · ")}` : null,
-  ].filter((x) => x !== null).join("\n");
 }
 
 const SCALE = { energy: ["Energie", "leer", "voll"], motivation: ["Motivation", "keine", "hoch"], stress: ["Stress", "ruhig", "hoch"] };
@@ -74,29 +49,37 @@ const RPE = [[1, "sehr leicht"], [2, "leicht"], [3, "locker"], [4, "moderat"], [
 
 export const maxDuration = 60;
 
-function Advice({ a }) {
-  const t = new Date(a.created_at).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
+// Entscheidung des Regelwerks; die KI-Erklärung kommt dazu, wenn sie zu genau dieser Entscheidung gehört
+function Decision({ d, a }) {
+  const t = a ? new Date(a.created_at).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" }) : null;
+  const n = d.nutrition;
   return (
     <div className="adv">
-      <div className="adv-head"><span className={`pill ${a.state}`}>{a.headline}</span></div>
-      {a.summary && <p className="adv-sum">{a.summary}</p>}
+      <div className="adv-head"><span className={`pill ${d.state}`}>{d.title}</span></div>
+      {a?.summary && <p className="adv-sum">{a.summary}</p>}
       <dl>
-        {[["Training", a.training], ["Nicht empfohlen", a.avoid], ["Alternative", a.alternative], ["Erholung", a.recovery], ["Ernährung", a.nutrition]].filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+        <div className="main"><dt>Heute</dt><dd><b>{d.main.what}</b> · {d.main.detail}</dd></div>
+        {d.avoid.length > 0 && <div className="no"><dt>Nicht empfohlen</dt><dd>{d.avoid.join(" · ")}</dd></div>}
+        {d.alt && <div><dt>Alternative</dt><dd><b>{d.alt.what}</b> · {d.alt.detail}</dd></div>}
+        <div><dt>Warum</dt><dd><ul>{(a?.why?.length ? a.why : d.why).map((w, i) => <li key={i}>{w}</li>)}</ul></dd></div>
+        <div><dt>Ernährung</dt><dd>{a?.nutrition || <>
+          {n.carbs_g} g Kohlenhydrate ({n.carbs_gkg} g/kg) · {n.protein_g} g Protein · {n.fluid_l} l trinken
+          {[n.pre, n.during, n.post].filter(Boolean).map((x, i) => <span key={i} className="nl">{x}</span>)}
+        </>}</dd></div>
+        {a?.recovery && <div><dt>Erholung</dt><dd>{a.recovery}</dd></div>}
+        <div><dt>Morgen</dt><dd>{d.tomorrow}</dd></div>
       </dl>
-      {a.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-      {a.why?.length > 0 && <details><summary>Warum?</summary><ul>{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}
-      <p className="note">{a.model === "Beispiel" ? "Beispiel-Empfehlung. Mit eigenem Konto schreibt die KI sie jeden Morgen aus deinen Daten." : `Erstellt um ${t} aus deinen Daten. Ersetzt keine ärztliche Beratung.`}</p>
+      {a?.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+      <p className="note">Entscheidung nach festen Regeln aus deinen Daten · Datenqualität {d.quality}{a ? ` · erklärt von der KI um ${t}` : ""}. Ersetzt keine ärztliche Beratung.</p>
     </div>
   );
 }
 
 export default async function Heute() {
   const { subject, viewer } = await viewerAndSubject();
-  const today = todayIso();
-  const { all, activities, providers, zones } = await buildSeries(subject.id, addDays(today, -364), today);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers } = await todayModel(subject.id);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
-  const st = computeStates(all), ctxv = personalContext(all);
   const ck = T?.checkin || null;
   const unrated = activities.filter((a) => a.category !== "other" && !a.rpe && a.day >= addDays(today, -3)).slice(0, 4);
   const conns = await repo.getConnections(subject.id);
@@ -104,6 +87,7 @@ export default async function Heute() {
   const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
   const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
+  const fresh = advice && decision && advice.decision_key === decision.key ? advice : null;
 
   // Mini-Verlauf 6 Wochen
   const W = 560, H = 200, L = 30, Rr = 10, Tp = 10, B = 22;
@@ -172,11 +156,11 @@ export default async function Heute() {
           )}
         </div>
         <div className="panel">
-          <div className="panel-head"><h2>Empfehlung für heute</h2><span className={`tag ${advice ? "on" : ""}`}>{advice ? "KI-Coach" : "Regelbasiert"}</span></div>
-          {advice ? <Advice a={advice} /> : <div className="coach">{recommend(T, zones, st, ck)}</div>}
-          {viewer.demo ? null : ai && hasAny ? (
-            <ActionForm action={createAdvice} className="btnrow" submit={advice ? "Neu erstellen" : "KI-Empfehlung erstellen"} busy="Analysiert deine Daten…" reset={false} />
-          ) : !ai ? <p className="note">Die KI-Empfehlung wird aktiv, sobald ein Admin Claude unter Admin → Schnittstellen freischaltet.</p> : null}
+          <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
+          {decision ? <Decision d={decision} a={fresh} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
+          {viewer.demo || !decision ? null : ai ? (
+            <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
+          ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
       </section>
 
@@ -266,7 +250,7 @@ export default async function Heute() {
           </ActionForm>
           <ul className="list">
             {todayTrig.length ? todayTrig.map((t) => (
-              <li key={t.id}><span className="tag wait">heute</span><span>{triggerName(t.data?.t)}{t.data?.t === "alkohol" ? ` · ${Number(t.value)} Gl.` : ""}</span>
+              <li key={t.id}><span className="tag wait">heute</span><span>{triggerName(t.data?.t)}{t.data?.t === "alkohol" ? ` · ${Number(t.value)} Gl.` : ""}{(() => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? <small className="note" style={{ display: "block" }}>Erfahrungsgemäss morgen HRV {r.metrics.hrv.diff > 0 ? "+" : "−"}{Math.abs(Math.round(r.metrics.hrv.diff))} %{r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}</small> : null; })()}</span>
                 <form action={deleteManual}><input type="hidden" name="id" value={t.id} /><button className="x" type="submit" aria-label="Entfernen">✕</button></form></li>
             )) : <li style={{ gridTemplateColumns: "1fr" }}><span className="muted">Heute noch nichts eingetragen.</span></li>}
           </ul>
