@@ -167,3 +167,17 @@ td.wrap{white-space:normal}
 
 .auth{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
 .auth .panel{width:min(420px,100%)}
+
+/* KI-Empfehlung */
+.adv{display:grid;gap:12px}
+.adv-sum{font-size:15px;line-height:1.55;margin:0}
+.adv dl{display:grid;gap:10px;margin:0}
+.adv dl div{background:var(--sunk);border-radius:12px;padding:10px 14px;display:grid;gap:2px}
+.adv dt{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.adv dd{margin:0;line-height:1.55}
+.adv-watch{margin:0;padding-left:18px;display:grid;gap:4px;color:#7A4D04}
+.adv details summary{cursor:pointer;font-weight:600;font-size:13px}
+.adv details ul{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.ib{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;padding:6px 2px 0}
+.ib span{white-space:nowrap}
+.ib em{font-style:normal;color:var(--muted);margin-right:4px}

@@ -60,6 +60,27 @@ export async function assignCoach(form) {
 export async function saveApp(_prev, form) {
   await requireAdmin();
   const provider = String(form.get("provider"));
+  if (provider === "anthropic") {
+    const apiKey = String(form.get("apiKey") || "").trim();
+    const model = String(form.get("model") || "").trim().slice(0, 80);
+    if (apiKey && !apiKey.startsWith("sk-ant-")) return { error: "Das sieht nicht nach einem Claude-API-Schlüssel aus (beginnt mit sk-ant-)." };
+    const cur = (await repo.getSettings()).apps?.anthropic || {};
+    if (!apiKey && !cur.apiKey) return { error: "API-Schlüssel eintragen." };
+    if (apiKey) {
+      const res = await fetch(`${process.env.ANTHROPIC_BASE || "https://api.anthropic.com/v1"}/models`, { headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" } }).catch(() => null);
+      if (res && (res.status === 401 || res.status === 403)) return { error: "Claude lehnt den Schlüssel ab. Bitte prüfen." };
+    }
+    await repo.updateSettings((s) => {
+      s.apps = s.apps || {};
+      const a = s.apps.anthropic || {};
+      if (apiKey) a.apiKey = encrypt(apiKey);
+      a.model = model || null;
+      s.apps.anthropic = a;
+      return s;
+    });
+    revalidatePath("/", "layout");
+    return { ok: "Gespeichert." };
+  }
   if (!["strava", "whoop"].includes(provider)) return { error: "Unbekannte Schnittstelle." };
   const clientId = String(form.get("clientId") || "").trim();
   const clientSecret = String(form.get("clientSecret") || "").trim();

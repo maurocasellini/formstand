@@ -3,9 +3,10 @@ import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS } from "@/lib/catalog";
 import { addManual, deleteManual, updateProfile } from "../../actions-data";
+import { INBODY_FIELDS } from "@/lib/ai";
 import ActionForm from "@/components/ActionForm";
 
-const KIND = { weight: "Gewicht", bodyfat: "Körperfett", trigger: "Trigger", test: "Leistungstest", note: "Notiz" };
+const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Trigger", test: "Leistungstest", note: "Notiz" };
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 
@@ -111,9 +112,9 @@ export default async function Eingaben() {
             <tbody>{entries.map((e) => (
               <tr key={e.id}>
                 <td className="num">{fmt(e.day)}</td>
-                <td>{KIND[e.kind] || e.kind}{e.is_demo && <span className="src">Beispiel</span>}</td>
-                <td className="num">{e.value == null ? "" : Number(e.value)}{e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? ` ${TEST_TYPES[e.data?.test]?.unit || ""}` : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
-                <td className="wrap">{e.kind === "trigger" ? triggerName(e.data?.t) : e.kind === "test" ? `${TEST_TYPES[e.data?.test]?.name || e.data?.test}${e.data?.note ? " · " + e.data.note : ""}` : e.data?.text || ""}</td>
+                <td>{KIND[e.kind] || e.kind}{e.source_media && <span className="src">aus InBody</span>}{e.is_demo && <span className="src">Beispiel</span>}</td>
+                <td className="num">{e.kind === "inbody" ? (e.data?.inbody_score != null ? `Score ${e.data.inbody_score}` : "") : e.value == null ? "" : Number(e.value)}{e.kind === "inbody" ? "" : e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? ` ${TEST_TYPES[e.data?.test]?.unit || ""}` : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
+                <td className="wrap">{e.kind === "inbody" ? ["smm_kg", "fat_mass_kg", "body_fat_pct", "visceral_level"].filter((f) => e.data?.[f] != null).map((f) => `${INBODY_FIELDS[f][0]} ${e.data[f]}${INBODY_FIELDS[f][1] ? " " + INBODY_FIELDS[f][1] : ""}`).join(" · ") : e.kind === "trigger" ? triggerName(e.data?.t) : e.kind === "test" ? `${TEST_TYPES[e.data?.test]?.name || e.data?.test}${e.data?.note ? " · " + e.data.note : ""}` : e.data?.text || ""}</td>
                 <td><form action={deleteManual}><input type="hidden" name="id" value={e.id} /><button className="x" type="submit" aria-label="Löschen">✕</button></form></td>
               </tr>))}</tbody>
           </table></div>

@@ -3,7 +3,9 @@ import { viewerAndSubject } from "@/lib/subject";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice } from "../../actions-data";
+import { aiReady } from "@/lib/ai";
+import { getTodayAdvice } from "@/lib/coach";
 import ActionForm from "@/components/ActionForm";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
@@ -42,6 +44,24 @@ function recommend(T, zones, sport) {
   ].filter((x) => x !== null).join("\n");
 }
 
+export const maxDuration = 60;
+
+function Advice({ a }) {
+  const t = new Date(a.created_at).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
+  return (
+    <div className="adv">
+      <div className="adv-head"><span className={`pill ${a.state}`}>{a.headline}</span></div>
+      {a.summary && <p className="adv-sum">{a.summary}</p>}
+      <dl>
+        {[["Training", a.training], ["Alternative", a.alternative], ["Erholung", a.recovery], ["Ernährung", a.nutrition]].filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+      </dl>
+      {a.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+      {a.why?.length > 0 && <details><summary>Warum?</summary><ul>{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}
+      <p className="note">Erstellt um {t} aus deinen Daten. Ersetzt keine ärztliche Beratung.</p>
+    </div>
+  );
+}
+
 export default async function Heute() {
   const { subject } = await viewerAndSubject();
   const today = todayIso();
@@ -51,6 +71,7 @@ export default async function Heute() {
   const todayTrig = (await repo.getManual(subject.id)).filter((e) => e.kind === "trigger" && e.day === today);
   const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
+  const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
   const labels = { hrv: "HRV", rhr: "Ruhepuls", sleep: "Schlaf", tsb: "Trainingsbalance" };
 
   // Mini-Verlauf 6 Wochen
@@ -105,8 +126,11 @@ export default async function Heute() {
           <p className="note">Balken = Abweichung zur persönlichen 28-Tage-Baseline.{T?.night?.length ? ` Vorabend: ${T.night.map((t) => triggerName(t.t)).join(", ")}.` : ""}</p>
         </div>
         <div className="panel">
-          <div className="panel-head"><h2>Empfehlung für heute</h2><span className="tag">Regelbasiert</span></div>
-          <div className="coach">{recommend(T, zones, subject.sport)}</div>
+          <div className="panel-head"><h2>Empfehlung für heute</h2><span className={`tag ${advice ? "on" : ""}`}>{advice ? "KI-Coach" : "Regelbasiert"}</span></div>
+          {advice ? <Advice a={advice} /> : <div className="coach">{recommend(T, zones, subject.sport)}</div>}
+          {ai && hasAny ? (
+            <ActionForm action={createAdvice} className="btnrow" submit={advice ? "Neu erstellen" : "KI-Empfehlung erstellen"} busy="Analysiert deine Daten…" reset={false} />
+          ) : !ai ? <p className="note">Die KI-Empfehlung wird aktiv, sobald ein Admin Claude unter Admin → Schnittstellen freischaltet.</p> : null}
         </div>
       </section>
 

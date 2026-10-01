@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import * as repo from "@/lib/repo";
 import { appCreds } from "@/lib/apps";
+import { aiConfig, DEFAULT_MODEL } from "@/lib/ai";
 import { baseUrl } from "@/lib/baseurl";
 import { SPORTS } from "@/lib/catalog";
 import { createUser, setRole, resetPassword, deleteUser, assignCoach, saveApp, removeApp, setRegistration } from "../../actions-admin";
@@ -24,6 +25,7 @@ export default async function Admin() {
   const st = Object.fromEntries(stats.map((s) => [s.id, s]));
   const names = Object.fromEntries(users.map((u) => [u.id, u.name]));
   const creds = Object.fromEntries(await Promise.all(APPS.map(async (a) => [a.id, await appCreds(a.id)])));
+  const ai = await aiConfig();
   const host = base.replace(/^https?:\/\//, "");
   const coaches = users.filter((u) => u.role === "coach" || u.role === "admin");
   return (
@@ -50,6 +52,17 @@ export default async function Admin() {
               </div>
             );
           })}
+          <div className="card">
+            <div className="t">Claude (KI)<span className={`tag ${ai.key ? "on" : "wait"}`}>{ai.key ? "freigeschaltet" : "offen"}</span></div>
+            <p>Liest InBody-Blätter (PDF oder Foto) automatisch aus und schreibt jeden Morgen eine persönliche Tagesempfehlung. Schlüssel auf console.anthropic.com unter „API Keys“ erstellen. Kosten: wenige Rappen pro Empfehlung.</p>
+            <p className="note">Für Empfehlung und Auslesen werden die Trainings- und Körperdaten der jeweiligen Person an die Claude-API geschickt.</p>
+            <ActionForm action={saveApp} className="stack" submit={ai.key ? "Aktualisieren" : "Freischalten"}>
+              <input type="hidden" name="provider" value="anthropic" />
+              <label className="f">API-Schlüssel{ai.key ? " (gespeichert, nur zum Ändern ausfüllen)" : ""}<input type="password" name="apiKey" autoComplete="off" placeholder="sk-ant-…" /></label>
+              <label className="f">Modell (leer = {DEFAULT_MODEL})<input type="text" name="model" defaultValue={ai.model === DEFAULT_MODEL ? "" : ai.model} autoComplete="off" /></label>
+            </ActionForm>
+            {ai.key && <form action={removeApp}><input type="hidden" name="provider" value="anthropic" /><button className="btn danger sm" type="submit">Entfernen</button></form>}
+          </div>
         </div>
         <p className="note">Garmin läuft ohne Freischaltung über intervals.icu (jede Person trägt ihren eigenen Schlüssel unter „Quellen“ ein) und über den Garmin-Datenexport.</p>
       </section>

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { put, del } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 import crypto from "node:crypto";
 import * as repo from "@/lib/repo";
 import { viewerAndSubject } from "@/lib/subject";
@@ -9,6 +9,9 @@ import { syncUser, syncConnection } from "@/lib/sync";
 import { todayIso } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
+import { aiReady } from "@/lib/ai";
+import { applyInBody } from "@/lib/inbody";
+import { makeAdvice } from "@/lib/coach";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -91,28 +94,63 @@ export async function connectIntervals(_prev, form) {
 
 const KINDS = ["body_photo", "meal", "inbody", "blood", "other"];
 export async function uploadMedia(_prev, form) {
-  const { subject } = await ctx();
+  const { viewer, subject } = await ctx();
   if (!process.env.BLOB_READ_WRITE_TOKEN) return { error: "Dateispeicher ist nicht verbunden." };
   const files = form.getAll("file").filter((f) => f && typeof f === "object" && f.size > 0);
   if (!files.length) return { error: "Bitte eine Datei wählen." };
   const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "other";
   const day = dayOf(form.get("day"));
   const note = String(form.get("note") || "").slice(0, 200);
+  const ai = kind === "inbody" && (await aiReady());
+  const notes = [];
   for (const f of files.slice(0, 6)) {
     if (f.size > 4 * 1024 * 1024) return { error: `${f.name} ist grösser als 4 MB.` };
     if (!/^(image\/|application\/pdf)/.test(f.type)) return { error: `${f.name}: nur Bilder oder PDF.` };
     const ext = (f.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
     const path = `files/${subject.id}/${kind}/${day}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-    const b = await put(path, f, { access: "private", contentType: f.type });
-    await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null });
+    const buf = Buffer.from(await f.arrayBuffer());
+    const b = await put(path, buf, { access: "private", contentType: f.type });
+    const m = await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null });
+    if (ai) {
+      try { const r = await applyInBody(subject.id, m, buf, viewer.id); notes.push(`${Object.keys(r.values).length} Werte ausgelesen (Messung vom ${r.day.split("-").reverse().join(".")})`); }
+      catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
+    }
   }
-  revalidatePath("/bilder");
-  return { ok: `${files.length} Datei${files.length > 1 ? "en" : ""} gespeichert.` };
+  revalidatePath("/", "layout");
+  return { ok: `${files.length} Datei${files.length > 1 ? "en" : ""} gespeichert.${notes.length ? " " + notes.join(" · ") + "." : ""}` };
+}
+
+// InBody-Datei (nochmals) auslesen, z. B. wenn sie vor der KI-Freischaltung hochgeladen wurde.
+export async function rereadInBody(_prev, form) {
+  const { viewer, subject } = await ctx();
+  if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
+  const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
+  if (!m) return { error: "Datei nicht gefunden." };
+  try {
+    const r = await get(m.pathname, { access: "private" });
+    if (!r || r.statusCode !== 200) throw new Error("Datei nicht lesbar.");
+    const buf = Buffer.from(await new Response(r.stream).arrayBuffer());
+    const out = await applyInBody(subject.id, m, buf, viewer.id);
+    revalidatePath("/", "layout");
+    return { ok: `${Object.keys(out.values).length} Werte übernommen.` };
+  } catch (e) {
+    await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) });
+    revalidatePath("/bilder");
+    return { error: String(e.message || e).slice(0, 200) };
+  }
+}
+
+// KI-Tagesempfehlung erstellen
+export async function createAdvice() {
+  const { subject } = await ctx();
+  try { await makeAdvice(subject.id); } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
+  revalidatePath("/heute");
+  return { ok: "Empfehlung erstellt." };
 }
 
 export async function deleteMedia(form) {
   const { subject } = await ctx();
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
-  if (m) { try { await del(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); }
-  revalidatePath("/bilder");
+  if (m) { try { await del(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
+  revalidatePath("/", "layout");
 }
