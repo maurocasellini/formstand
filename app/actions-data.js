@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { put, del, get } from "@vercel/blob";
+import { putFile, readFile, removeFile, filesReady } from "@/lib/files";
 import crypto from "node:crypto";
 import * as repo from "@/lib/repo";
 import { viewerAndSubject } from "@/lib/subject";
@@ -10,7 +10,7 @@ import { syncUser, syncConnection } from "@/lib/sync";
 import { todayIso } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
-import { aiReady } from "@/lib/ai";
+import { aiReady, comparePhotos as aiComparePhotos } from "@/lib/ai";
 import { applyInBody } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
@@ -109,7 +109,7 @@ const KINDS = ["body_photo", "meal", "inbody", "blood", "other"];
 export async function uploadMedia(_prev, form) {
   const { viewer, subject, demo } = await ctx();
   if (demo) return DEMO;
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return { error: "Dateispeicher ist nicht verbunden." };
+  if (!filesReady) return { error: "Dateispeicher ist nicht verbunden." };
   const files = form.getAll("file").filter((f) => f && typeof f === "object" && f.size > 0);
   if (!files.length) return { error: "Bitte eine Datei wählen." };
   const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "other";
@@ -123,8 +123,9 @@ export async function uploadMedia(_prev, form) {
     const ext = (f.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
     const path = `files/${subject.id}/${kind}/${day}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
     const buf = Buffer.from(await f.arrayBuffer());
-    const b = await put(path, buf, { access: "private", contentType: f.type });
-    const m = await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null });
+    const b = await putFile(path, buf, f.type);
+    const pose = kind === "body_photo" && ["front", "side", "back"].includes(String(form.get("pose"))) ? String(form.get("pose")) : null;
+    const m = await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null, pose });
     if (ai) {
       try { const r = await applyInBody(subject.id, m, buf, viewer.id); notes.push(`${Object.keys(r.values).length} Werte ausgelesen (Messung vom ${r.day.split("-").reverse().join(".")})`); }
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
@@ -142,9 +143,8 @@ export async function rereadInBody(_prev, form) {
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
   if (!m) return { error: "Datei nicht gefunden." };
   try {
-    const r = await get(m.pathname, { access: "private" });
-    if (!r || r.statusCode !== 200) throw new Error("Datei nicht lesbar.");
-    const buf = Buffer.from(await new Response(r.stream).arrayBuffer());
+    const buf = await readFile(m.pathname);
+    if (!buf) throw new Error("Datei nicht lesbar.");
     const out = await applyInBody(subject.id, m, buf, viewer.id);
     revalidatePath("/", "layout");
     return { ok: `${Object.keys(out.values).length} Werte übernommen.` };
@@ -168,7 +168,7 @@ export async function deleteMedia(form) {
   const { subject, demo } = await ctx();
   if (demo) return DEMO;
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
-  if (m) { try { await del(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
+  if (m) { try { await removeFile(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
   revalidatePath("/", "layout");
 }
 
@@ -263,4 +263,32 @@ export async function deleteEvent(form) {
   const id = String(form.get("id"));
   await repo.updateGoals(subject.id, (g) => ({ ...g, events: (g.events || []).filter((e) => e.id !== id) }));
   revalidatePath("/", "layout");
+}
+
+// ---------- Körperfotos mit KI vergleichen (nur auf Knopfdruck) ----------
+const readBlob = async (pathname) => {
+  const buf = await readFile(pathname);
+  if (!buf) throw new Error("Foto nicht lesbar.");
+  return buf;
+};
+export async function comparePhotos(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
+  const media = await repo.getMedia(subject.id);
+  const A = media.find((x) => x.id === String(form.get("a"))), B = media.find((x) => x.id === String(form.get("b")));
+  if (!A || !B || A.id === B.id) return { error: "Bitte zwei verschiedene Fotos wählen." };
+  const ok = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!ok.includes(A.content_type) || !ok.includes(B.content_type)) return { error: "Nur JPG, PNG oder WebP vergleichbar (kein HEIC)." };
+  // Gemessene Referenzen zu beiden Daten: nächstes Gewicht und InBody/Körperfett
+  const man = await repo.getManual(subject.id);
+  const near = (kind, day) => man.filter((x) => x.kind === kind).map((x) => [Math.abs(new Date(x.day) - new Date(day)) / 864e5, x]).filter(([d]) => d <= 21).sort((p, q) => p[0] - q[0])[0]?.[1];
+  const ref = (day) => ({ datum: day, gewicht_kg: near("weight", day)?.value ?? null, koerperfett_pct: near("bodyfat", day)?.value ?? null, inbody: near("inbody", day)?.data ? { skelettmuskel_kg: near("inbody", day).data.smm_kg ?? null, fettmasse_kg: near("inbody", day).data.fat_mass_kg ?? null } : null });
+  try {
+    const r = await aiComparePhotos({ buf: await readBlob(A.pathname), type: A.content_type }, { buf: await readBlob(B.pathname), type: B.content_type },
+      { A: ref(A.day), B: ref(B.day), tage_dazwischen: Math.round((new Date(B.day) - new Date(A.day)) / 864e5), pose: B.pose || A.pose || null }, subject.id);
+    await repo.savePhotoCompare(subject.id, `${A.id}|${B.id}`, r);
+  } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
+  revalidatePath("/bilder");
+  return { ok: "Vergleich erstellt." };
 }

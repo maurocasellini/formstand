@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { get } from "@vercel/blob";
+import { readFile } from "@/lib/files";
 import { currentUser, resolveSubject } from "@/lib/auth";
 import * as repo from "@/lib/repo";
 
@@ -13,7 +13,7 @@ export async function GET(_req, { params }) {
   const { id } = await params;
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === id);
   if (!m) return new Response("Nicht gefunden", { status: 404 });
-  const r = await get(m.pathname, { access: "private" });
-  if (!r || r.statusCode !== 200) return new Response("Nicht gefunden", { status: 404 });
-  return new Response(r.stream, { headers: { "content-type": m.content_type || "application/octet-stream", "cache-control": "private, max-age=3600" } });
+  const buf = await readFile(m.pathname);
+  if (!buf) return new Response("Nicht gefunden", { status: 404 });
+  return new Response(buf, { headers: { "content-type": m.content_type || "application/octet-stream", "cache-control": "private, max-age=3600" } });
 }

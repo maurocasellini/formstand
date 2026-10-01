@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import * as repo from "@/lib/repo";
 import { appCreds } from "@/lib/apps";
-import { aiConfig, DEFAULT_MODEL } from "@/lib/ai";
+import { aiConfig, MODELS, getUsage } from "@/lib/ai";
 import { baseUrl } from "@/lib/baseurl";
 import { SPORTS } from "@/lib/catalog";
 import { createUser, setRole, resetPassword, deleteUser, assignCoach, saveApp, removeApp, setRegistration } from "../../actions-admin";
@@ -26,6 +26,9 @@ export default async function Admin() {
   const names = Object.fromEntries(users.map((u) => [u.id, u.name]));
   const creds = Object.fromEntries(await Promise.all(APPS.map(async (a) => [a.id, await appCreds(a.id)])));
   const ai = await aiConfig();
+  const usage = await getUsage();
+  const mon = new Date().toISOString().slice(0, 7), um = usage[mon] || { usd: 0, calls: 0, users: {}, kinds: {} };
+  const usd = (v) => `$${(v || 0).toFixed((v || 0) < 1 ? 3 : 2)}`;
   const host = base.replace(/^https?:\/\//, "");
   const coaches = users.filter((u) => u.role === "coach" || u.role === "admin");
   return (
@@ -54,13 +57,26 @@ export default async function Admin() {
           })}
           <div className="card">
             <div className="t">Claude (KI)<span className={`tag ${ai.key ? "on" : "wait"}`}>{ai.key ? "freigeschaltet" : "offen"}</span></div>
-            <p>Liest InBody-Blätter (PDF oder Foto) automatisch aus und schreibt jeden Morgen eine persönliche Tagesempfehlung. Schlüssel auf console.anthropic.com unter „API Keys“ erstellen. Kosten: wenige Rappen pro Empfehlung.</p>
-            <p className="note">Für Empfehlung und Auslesen werden die Trainings- und Körperdaten der jeweiligen Person an die Claude-API geschickt.</p>
+            <p>Erklärt die Tagesentscheidung nach dem Check-in, liest InBody-Blätter aus und vergleicht Körperfotos. Schlüssel auf console.anthropic.com unter „API Keys“ erstellen.</p>
+            <p className="note">Dafür werden die Daten der jeweiligen Person an die Claude-API geschickt (Fotos nur auf Knopfdruck).</p>
+            {ai.key && (
+              <div className="aicost">
+                <div><b>{usd(um.usd)}</b><small>diesen Monat · {um.calls} Aufrufe{ai.monthlyCapUsd > 0 ? ` · Limit ${usd(ai.monthlyCapUsd)}` : ""}</small></div>
+                {ai.monthlyCapUsd > 0 && <div className="bar"><i style={{ width: `${Math.min(100, (um.usd / ai.monthlyCapUsd) * 100)}%`, background: um.usd >= ai.monthlyCapUsd ? "var(--crit)" : "var(--accent)" }} /></div>}
+                <small className="note">{Object.entries(um.kinds).map(([k, v]) => `${{ advice: "Erklärungen", inbody: "InBody", photo: "Fotovergleich" }[k] || k}: ${usd(v.usd)} (${v.calls}×)`).join(" · ") || "Noch keine Aufrufe."}</small>
+                {Object.keys(um.users).length > 0 && <small className="note">Pro Person: {Object.entries(um.users).map(([id, v]) => `${names[id] || "System"} ${usd(v.usd)}`).join(" · ")}</small>}
+              </div>
+            )}
             <ActionForm action={saveApp} className="stack" submit={ai.key ? "Aktualisieren" : "Freischalten"}>
               <input type="hidden" name="provider" value="anthropic" />
               <label className="f">API-Schlüssel{ai.key ? " (gespeichert, nur zum Ändern ausfüllen)" : ""}<input type="password" name="apiKey" autoComplete="off" placeholder="sk-ant-…" /></label>
-              <label className="f">Modell (leer = {DEFAULT_MODEL})<input type="text" name="model" defaultValue={ai.model === DEFAULT_MODEL ? "" : ai.model} autoComplete="off" /></label>
+              <div className="form">
+                <label className="f">Tageserklärung<select name="adviceModel" defaultValue={ai.adviceModel}>{Object.entries(MODELS).map(([id, m]) => <option key={id} value={id}>{m.name} · ${m.price[0]}/${m.price[1]} pro Mio.</option>)}</select></label>
+                <label className="f">InBody & Fotos<select name="visionModel" defaultValue={ai.visionModel}>{Object.entries(MODELS).map(([id, m]) => <option key={id} value={id}>{m.name} · ${m.price[0]}/${m.price[1]} pro Mio.</option>)}</select></label>
+                <label className="f">Monatslimit $ (0 = keines)<input type="number" name="monthlyCapUsd" min="0" max="500" step="any" defaultValue={ai.monthlyCapUsd} /></label>
+              </div>
             </ActionForm>
+            <p className="note">Empfohlen: Haiku für die Erklärung (formuliert nur, ca. $0.005 pro Tag und Person), Sonnet fürs Lesen von Blättern und Fotos (Genauigkeit). Ist das Limit erreicht, läuft Formstand ohne KI-Texte weiter.</p>
             {ai.key && <form action={removeApp}><input type="hidden" name="provider" value="anthropic" /><button className="btn danger sm" type="submit">Entfernen</button></form>}
           </div>
         </div>

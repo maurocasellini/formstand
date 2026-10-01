@@ -4,6 +4,8 @@ import crypto from "node:crypto";
 import * as repo from "@/lib/repo";
 import { requireAdmin } from "@/lib/auth";
 import { encrypt } from "@/lib/crypto";
+import Anthropic from "@anthropic-ai/sdk";
+import { client as aiClient, MODELS, DEFAULTS as AI_DEFAULTS } from "@/lib/ai";
 
 const NAME_OK = /^[A-Za-z0-9._-]{3,40}$/;
 
@@ -62,19 +64,23 @@ export async function saveApp(_prev, form) {
   const provider = String(form.get("provider"));
   if (provider === "anthropic") {
     const apiKey = String(form.get("apiKey") || "").trim();
-    const model = String(form.get("model") || "").trim().slice(0, 80);
     if (apiKey && !apiKey.startsWith("sk-ant-")) return { error: "Das sieht nicht nach einem Claude-API-Schlüssel aus (beginnt mit sk-ant-)." };
     const cur = (await repo.getSettings()).apps?.anthropic || {};
     if (!apiKey && !cur.apiKey) return { error: "API-Schlüssel eintragen." };
     if (apiKey) {
-      const res = await fetch(`${process.env.ANTHROPIC_BASE || "https://api.anthropic.com/v1"}/models`, { headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" } }).catch(() => null);
-      if (res && (res.status === 401 || res.status === 403)) return { error: "Claude lehnt den Schlüssel ab. Bitte prüfen." };
+      try { await aiClient(apiKey).models.list({ limit: 1 }); }
+      catch (e) { if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return { error: "Claude lehnt den Schlüssel ab. Bitte prüfen." }; }
     }
+    const pick = (v, d) => (MODELS[String(v)] ? String(v) : d);
+    const cap = Number(String(form.get("monthlyCapUsd") ?? "").replace(",", "."));
     await repo.updateSettings((s) => {
       s.apps = s.apps || {};
       const a = s.apps.anthropic || {};
       if (apiKey) a.apiKey = encrypt(apiKey);
-      a.model = model || null;
+      a.adviceModel = pick(form.get("adviceModel"), AI_DEFAULTS.adviceModel);
+      a.visionModel = pick(form.get("visionModel"), AI_DEFAULTS.visionModel);
+      a.monthlyCapUsd = Number.isFinite(cap) && cap >= 0 ? Math.min(cap, 500) : AI_DEFAULTS.monthlyCapUsd;
+      delete a.model;
       s.apps.anthropic = a;
       return s;
     });

@@ -288,3 +288,15 @@ td.wrap{white-space:normal}
 @media (max-width:560px){.rv-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .rv-g span{background:var(--sunk);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
 .rv-g em{display:block;font-style:normal;font-family:var(--font-display);font-size:17px;font-weight:600;color:var(--fg)}
+.aicost{display:grid;gap:6px;background:var(--sunk);border-radius:12px;padding:10px 12px}
+.aicost b{font-family:var(--font-display);font-size:20px;margin-right:6px}
+/* Fotovergleich */
+.cmp{display:grid;gap:8px;width:100%;max-width:440px}
+.cmp-stage{position:relative;border-radius:14px;overflow:hidden;background:var(--sunk);aspect-ratio:3/4}
+.cmp-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp-line{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+.cmp-tag{position:absolute;top:10px;font-size:12px;font-weight:700;background:rgba(255,255,255,.9);border-radius:8px;padding:3px 8px}
+.cmp-tag.l{left:10px}.cmp-tag.r{right:10px}
+.cmp input[type=range]{width:100%;accent-color:var(--accent)}
+.pcmp{display:grid;gap:10px;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.pres{display:grid;gap:8px;align-content:start}
