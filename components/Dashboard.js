@@ -30,7 +30,8 @@ function agg(days) {
   if (!days.length) return null;
   return { h: sum(days, "min") / 60, n: sum(days, "n"), end: sum(days, "end"), str: sum(days, "str"), other: sum(days, "other"),
     strN: days.filter((p) => p.str > 0).length, score: mean(days.map((p) => p.score)), hrv: mean(days.map((p) => p.hrv)), rhr: mean(days.map((p) => p.rhr)),
-    sleep: mean(days.map((p) => p.sleep)), alc: days.filter((p) => p.alc > 0).length, weight: mean(days.slice(-14).map((p) => p.weight)), ctl: days[days.length - 1].ctl };
+    sleep: mean(days.map((p) => p.sleep)), sleepScore: mean(days.map((p) => p.sleepScore)), bbHigh: mean(days.map((p) => p.bbHigh)), stress: mean(days.map((p) => p.stress)),
+    readiness: mean(days.map((p) => p.readiness)), vo2max: mean(days.slice(-14).map((p) => p.vo2max)), deep: mean(days.map((p) => p.deep)), alc: days.filter((p) => p.alc > 0).length, weight: mean(days.slice(-14).map((p) => p.weight)), ctl: days[days.length - 1].ctl };
 }
 function Delta({ c, p, up = true, abs = false, unit = "" }) {
   if (p == null || c == null || !Number.isFinite(p) || (!abs && p === 0)) return <span className="delta flat">keine Vorperiode</span>;
@@ -144,7 +145,11 @@ export default function Dashboard() {
   const SB = buckets(days, days.length <= 31 ? "tag" : "woche");
   const metrics = [["Ø Tagesform", "score", (v) => Math.round(v), "/100", true, true, "var(--accent)"], ["Ø HRV", "hrv", (v) => Math.round(v), " ms", true, false, "var(--good)"],
     ["Ø Ruhepuls", "rhr", (v) => Math.round(v), " bpm", false, false, "var(--crit)"], ["Ø Schlaf", "sleep", (v) => v.toFixed(1), " h", true, true, "var(--s3)"],
-    ["Gewicht", "weight", (v) => v.toFixed(1), " kg", false, true, "var(--s1)"], ["Fitness (CTL)", "ctl", (v) => Math.round(v), "", true, false, "var(--c-end)"]];
+    ["Gewicht", "weight", (v) => v.toFixed(1), " kg", false, true, "var(--s1)"], ["Fitness (CTL)", "ctl", (v) => Math.round(v), "", true, false, "var(--c-end)"],
+    ["Ø Sleep Score", "sleepScore", (v) => Math.round(v), "/100", true, true, "var(--s2)"], ["Ø Body Battery max", "bbHigh", (v) => Math.round(v), "", true, true, "var(--good)"],
+    ["Ø Stress", "stress", (v) => Math.round(v), "", false, true, "var(--warn)"], ["Training Readiness", "readiness", (v) => Math.round(v), "", true, true, "var(--accent)"],
+    ["VO2max", "vo2max", (v) => v.toFixed(1), "", true, true, "var(--s4)"], ["Ø Tiefschlaf", "deep", (v) => v.toFixed(1), " h", true, true, "var(--s3)"]]
+    .filter(([, key], i) => i < 6 || days.some((p) => p[key] != null));
 
   // Heatmap 12 Monate
   const HF = all.filter((p) => p.day > add(today, -365) && p.day <= today), cs = 12, gp = 3;

@@ -6,7 +6,7 @@ import { TRIGGERS, triggerName } from "@/lib/catalog";
 import { addManual, deleteManual, loadDemo } from "../../actions-data";
 import ActionForm from "@/components/ActionForm";
 
-const PNAME = { whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
+const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
 const r1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1));
 const r0 = (v) => (v == null ? "–" : Math.round(v));
 
@@ -121,6 +121,28 @@ export default async function Heute() {
               ))}
             </tbody>
           </table></div>
+        </section>
+      )}
+
+      {T && [T.sleepScore, T.bbHigh, T.stress, T.spo2, T.resp, T.readiness, T.vo2max, T.deep].some((v) => v != null) && (
+        <section className="panel">
+          <div className="panel-head"><h2>Garmin-Details letzte Nacht</h2><span className="note">Schlaf, Erholung, Atmung</span></div>
+          <div className="hl" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))" }}>
+            {[["Sleep Score", T.sleepScore, (v) => Math.round(v), "/100"], ["Body Battery max", T.bbHigh, (v) => Math.round(v), ""], ["Body Battery min", T.bbLow, (v) => Math.round(v), ""],
+              ["Stress Ø", T.stress, (v) => Math.round(v), ""], ["Training Readiness", T.readiness, (v) => Math.round(v), ""], ["SpO2 Ø", T.spo2, (v) => Math.round(v), " %"],
+              ["Atmung", T.resp, (v) => v.toFixed(1), " /min"], ["Puls im Schlaf", T.sleepHr, (v) => Math.round(v), " bpm"], ["VO2max", T.vo2max, (v) => v.toFixed(1), ""],
+              ["Hauttemperatur", T.skinTemp, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`, " °C"], ["Intensitätsminuten", T.intensity, (v) => Math.round(v), ""]]
+              .filter(([, v]) => v != null).map(([l, v, f, u]) => <div key={l} className="hli"><span>{l}</span><b>{f(v)}<small className="note">{u}</small></b></div>)}
+          </div>
+          {T.deep != null && (() => {
+            const parts = [["Tief", T.deep, "#3A57F5"], ["REM", T.rem, "#A78BFA"], ["Leicht", T.light, "#9DB2FF"], ["Wach", T.awake, "#F6B94A"]].filter(([, v]) => v != null);
+            const tot = parts.reduce((s, p) => s + p[1], 0) || 1;
+            return (<>
+              <h3>Schlafphasen</h3>
+              <div className="sbar">{parts.map(([l, v, c]) => <i key={l} style={{ width: `${(v / tot) * 100}%`, background: c }} title={`${l} ${v.toFixed(1)} h`} />)}</div>
+              <div className="slegend">{parts.map(([l, v, c]) => <span key={l}><i style={{ background: c }} />{l} <em>{Math.floor(v)}:{String(Math.round((v % 1) * 60)).padStart(2, "0")} h</em></span>)}</div>
+            </>);
+          })()}
         </section>
       )}
 

@@ -2,7 +2,9 @@ import { viewerAndSubject } from "@/lib/subject";
 import { q, one } from "@/lib/db";
 import { PROVIDERS } from "@/lib/providers";
 import { baseUrl } from "@/lib/baseurl";
-import { syncNow, disconnect, loadDemo, removeDemo, fullResync } from "../../actions-data";
+import { syncNow, disconnect, loadDemo, removeDemo, fullResync, connectIntervals } from "../../actions-data";
+import ActionForm from "@/components/ActionForm";
+import GarminImport from "@/components/GarminImport";
 import SyncButton from "@/components/SyncButton";
 
 const when = (d) => (d ? new Date(d).toLocaleString("de-CH", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Zurich" }) : "noch nie");
@@ -27,13 +29,21 @@ export default async function Quellen({ searchParams }) {
             <div key={p.id} className="card">
               <div className="t">{p.name}
                 {c ? <span className={`tag ${c.last_error ? "err" : "on"}`}>{c.last_error ? "Fehler" : "verbunden"}</span>
+                  : p.id === "garmin" ? <span className="tag next">via intervals.icu</span>
                   : p.pendingApproval && !ready ? <span className="tag wait">Freigabe nötig</span>
                   : p.soon ? <span className="tag">folgt</span>
                   : ready ? <span className="tag next">bereit</span> : <span className="tag wait">einrichten</span>}
               </div>
               <p>{p.kind}</p>
               {c && <p>Letzter Abgleich: {when(c.last_sync_at)}{c.last_error ? ` · ${c.last_error}` : ""}</p>}
-              {!c && ready && own && <a className="btn" href={`/api/connect/${p.id}`}>Mit {p.name} verbinden</a>}
+              {!c && ready && own && p.apiKey && (
+                <ActionForm action={connectIntervals} className="stack" submit="Verbinden">
+                  <label className="f">Athleten-ID<input type="text" name="athlete" placeholder="i123456" autoComplete="off" /></label>
+                  <label className="f">API-Schlüssel<input type="password" name="key" required autoComplete="off" /></label>
+                </ActionForm>
+              )}
+              {!c && ready && own && !p.apiKey && <a className="btn" href={`/api/connect/${p.id}`}>Mit {p.name} verbinden</a>}
+              {!c && p.apiKey && <p className="note">{p.setup}</p>}
               {!c && ready && !own && <p>Verbinden kann nur die Person selbst.</p>}
               {c && <form action={disconnect}><input type="hidden" name="provider" value={p.id} /><button className="btn danger sm" type="submit">Trennen</button></form>}
               {!ready && <p className="note">{p.setup}</p>}
@@ -45,6 +55,18 @@ export default async function Quellen({ searchParams }) {
           <div className="t">Zwift<span className="tag next">über Strava</span></div>
           <p>Zwift hat keine offene Schnittstelle. In Zwift „Strava“ und „Garmin Connect“ verknüpfen, dann kommen alle Fahrten hier an. Doppelte Einträge werden zusammengeführt.</p>
         </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head"><h2>Garmin-Datenexport einlesen</h2><span className="note">alles, auch rückwirkend über Jahre</span></div>
+        <div className="grid2e">
+          <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+            <li>Auf <b>connect.garmin.com</b> anmelden → Profilbild → <b>Kontoeinstellungen</b> → <b>Datenverwaltung</b> → <b>Daten exportieren</b>.</li>
+            <li>Garmin schickt nach einigen Stunden bis Tagen einen Download-Link per E-Mail.</li>
+            <li>Die ZIP-Datei hier auswählen. Sie wird im Browser entpackt, nur die Daten werden hochgeladen.</li>
+          </ol>
+          {own ? <GarminImport /> : <p className="muted">Den Import macht die Person selbst.</p>}
+        </div>
+        <p className="note">Übernommen werden u. a. Schlafphasen und Sleep Score, Body Battery, Stress, HRV, Ruhepuls, SpO2, Atmung, Training Readiness, VO2max, Gewicht und alle Workouts. Alles Weitere bleibt als Rohdaten gespeichert.</p>
       </section>
       <section className="grid2e">
         <div className="panel">

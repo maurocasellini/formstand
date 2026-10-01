@@ -24,6 +24,7 @@ export async function GET(req) {
     day: d.day, end: Math.round(d.end), str: Math.round(d.str), other: Math.round(d.other), min: d.min, n: d.n,
     low: Math.round(d.low), mid: Math.round(d.mid), high: Math.round(d.high),
     ctl: Math.round(d.ctl * 10) / 10, score: d.score, hrv: d.hrv, rhr: d.rhr, sleep: d.sleep, weight: d.weight,
+    sleepScore: d.sleepScore, bbHigh: d.bbHigh, stress: d.stress, vo2max: d.vo2max, readiness: d.readiness, spo2: d.spo2, deep: d.deep, rem: d.rem,
     alc: (d.night || []).filter((t) => t.t === "alkohol").reduce((s, t) => s + (t.n || 1), 0),
   }));
   const [origin] = await q(

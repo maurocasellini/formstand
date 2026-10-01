@@ -103,3 +103,23 @@ export async function deleteMedia(form) {
   if (m) { try { await del(m.pathname); } catch {} await q("delete from media where id=$1", [m.id]); }
   revalidatePath("/bilder");
 }
+
+export async function connectIntervals(_prev, form) {
+  const { viewer, subject } = await ctx();
+  if (viewer.id !== subject.id) return { error: "Verbinden kann nur die Person selbst." };
+  const key = String(form.get("key") || "").trim();
+  const athlete = String(form.get("athlete") || "").trim() || "0";
+  if (key.length < 10) return { error: "Bitte den API-Schlüssel aus intervals.icu einfügen." };
+  const { intervals } = await import("@/lib/providers/intervals");
+  const { encrypt } = await import("@/lib/crypto");
+  const { syncConnection } = await import("@/lib/sync");
+  let info;
+  try { info = await intervals.verify(athlete, key); } catch (e) { return { error: String(e.message || e) }; }
+  await q(`insert into connections (user_id, provider, external_id, access_token, status) values ($1,'intervals',$2,$3,'active')
+           on conflict (user_id, provider) do update set external_id=excluded.external_id, access_token=excluded.access_token, status='active', last_error=null`,
+    [subject.id, info.external_id, encrypt(key)]);
+  const conn = await one("select * from connections where user_id=$1 and provider='intervals'", [subject.id]);
+  const r = await syncConnection(conn, { full: true });
+  revalidatePath("/", "layout");
+  return r.ok ? { ok: `Verbunden${info.name ? ` als ${info.name}` : ""}. ${r.items} Datensätze der letzten 12 Monate geladen.` } : { error: `Verbunden, aber der erste Abruf schlug fehl: ${r.message}` };
+}
