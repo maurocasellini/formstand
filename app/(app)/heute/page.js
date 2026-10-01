@@ -9,10 +9,12 @@ import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, saveCheckin, rateSession, saveEvening } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, createBrief, saveCheckin, rateSession, saveEvening } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
-import { getTodayAdvice, todayModel, feedbackModel } from "@/lib/coach";
+import { getTodayAdvice, todayModel, feedbackModel, getBrief, briefState, makeBrief } from "@/lib/coach";
+import Brief from "@/components/Brief";
+import { after } from "next/server";
 import Tabs from "@/components/Tabs";
 import Feedback from "@/components/Feedback";
 import { ACT_LABEL } from "@/lib/adherence";
@@ -151,6 +153,8 @@ export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const M = await todayModel(subject.id);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = M;
+  const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
+  const hasAny = activities.length || providers.length;
   const tg = targetsOf(goals, manual, all, today);
   const tiles = trendTiles(all, vo2Summary(all, manual, subject, today));
   const fnd = findings(all, { activities, st, goals, triggers });
@@ -158,6 +162,13 @@ export default async function Heute({ demo } = {}) {
   const fbs = all.length > 40 ? await feedbackModel(subject.id, M) : [];
   const fbAi = await repo.getFeedback(subject.id);
   const aiFor = (f) => Object.values(fbAi).filter((x) => x.period === f.key && x.key.startsWith(`${f.key}:${f.from}`)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] || null;
+  // Wochenbrief: der neuste; fehlt der dieser Woche, entsteht er im Hintergrund (einmal pro Woche)
+  const brief = viewer.demo ? null : await getBrief(subject.id);
+  const bState = viewer.demo ? null : await briefState(subject.id, today);
+  if (ai && !viewer.demo && hasAny && all.length > 40 && bState && !bState.done && !bState.pending && !bState.error) {
+    bState.pending = true;
+    after(async () => { try { await makeBrief(subject.id); } catch {} });
+  }
   const fbStart = new Date(today + "T12:00:00Z").getUTCDay() === 1 ? 1 : 0;
   const ws = hasGoals ? weekStatus(week, all, activities, today) : null;
   const days = all.slice(-42);
@@ -167,9 +178,7 @@ export default async function Heute({ demo } = {}) {
   const conns = await repo.getConnections(subject.id);
   const pushOn = viewer.demo ? true : (await repo.getPushSubs(viewer.id)).length > 0;
   const todayTrig = (await repo.getManual(subject.id)).filter((e) => e.kind === "trigger" && e.day === today);
-  const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
-  const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
   const fresh = advice && decision && advice.decision_key === decision.key ? advice : null;
   const bodyAna = Object.values(await repo.getBodyAnalyses(subject.id)).sort((a, b) => (a.day < b.day ? 1 : -1))[0] || null;
   const hasBodyPhotos = !bodyAna && (await repo.getMedia(subject.id)).some((m) => m.kind === "body_photo");
@@ -258,6 +267,13 @@ export default async function Heute({ demo } = {}) {
           <div className="finds">{fnd.slice(0, 6).map((f) => (
             <div key={f.title} className={`find ${f.tone}`}><b>{f.title}</b><p>{f.text}</p></div>
           ))}</div>
+        </section>
+      )}
+
+      {hasAny && !viewer.demo && (
+        <section className="panel">
+          <div className="panel-head"><h2>Dein Coach · Wochenbrief</h2><span className="note">alles zusammen, in Worten – jeden Montag neu</span></div>
+          <Brief b={brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} />
         </section>
       )}
 

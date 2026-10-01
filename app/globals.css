@@ -737,3 +737,10 @@ details.more-data>section,details.more-data>.panel{box-shadow:none}
 .fb-next{margin:0;padding:10px 14px;border-radius:12px;background:var(--accent-soft)}
 .fb-ai{display:grid;gap:6px;padding:14px;border-radius:14px;border:1px solid var(--line2)}
 .fb-ai p,.fb-ai ul{margin:0}.fb-ai ul{padding-left:4px;list-style:none;display:grid;gap:3px}
+/* Wochenbrief */
+.brief{display:grid;gap:10px;max-width:80ch}
+.brief p{margin:0;line-height:1.65}
+.brief-t{font-size:20px;text-transform:none;letter-spacing:0;color:var(--fg);font-weight:800;margin:0}
+.brief-f{padding:12px 14px;border-radius:14px;background:var(--accent-soft);display:grid;gap:6px}
+.brief-f ol{margin:0;padding-left:20px;display:grid;gap:4px}
+.brief-a{padding:10px 14px;border-left:4px solid var(--accent);background:var(--sunk);border-radius:0 12px 12px 0}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncAll } from "@/lib/sync";
 import { morningPush, reviewPush } from "@/lib/push";
+import { weeklyBriefs } from "@/lib/coach";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -14,5 +15,8 @@ export async function GET(req) {
   try { push = await morningPush(); } catch (e) { push = { error: String(e.message || e) }; }
   let reviews;
   try { reviews = await reviewPush(); } catch (e) { reviews = { error: String(e.message || e) }; }
-  return NextResponse.json({ sync, push, reviews });
+  // Montags: Wochenbrief der KI für alle mit frischen Daten
+  let briefs = null;
+  if (new Date().getUTCDay() === 1) { try { briefs = await weeklyBriefs(); } catch (e) { briefs = { error: String(e.message || e) }; } }
+  return NextResponse.json({ sync, push, reviews, briefs });
 }
