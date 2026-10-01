@@ -3,7 +3,7 @@ import { pageContext } from "@/lib/subject";
 import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
-import { MEDIA_KINDS } from "@/lib/catalog";
+import { MEDIA_KINDS, TEST_TYPES } from "@/lib/catalog";
 import { uploadMedia, deleteMedia, rereadInBody, comparePhotos, changeMedia, analyzeBodyAction, adoptWeaknesses, addManual, updateProfile } from "../../actions-data";
 import BodyAnalysis from "@/components/BodyAnalysis";
 import CompareSlider from "@/components/CompareSlider";
@@ -84,7 +84,7 @@ export default async function Bilder({ searchParams, demo } = {}) {
   const kgNow = wLast ? Number(wLast.value) : subject.weight_kg ?? null, cm = subject.height_cm ?? null;
   const bmi = kgNow && cm ? Math.round((kgNow / (cm / 100) ** 2) * 10) / 10 : null;
   const measuredBf = (() => { const b = manual.filter((m) => m.kind === "bodyfat").sort((a, b) => (a.day < b.day ? 1 : -1))[0]; return b ? Number(b.value) : null; })();
-  const docGroups = ["blood", "meal", "other"].map((k) => [k, docs.filter((m) => m.kind === k)]).filter(([, l]) => l.length);
+  const docGroups = ["test", "blood", "meal", "other"].map((k) => [k, docs.filter((m) => m.kind === k)]).filter(([, l]) => l.length);
 
   return (
     <>
@@ -225,7 +225,7 @@ export default async function Bilder({ searchParams, demo } = {}) {
 
       {docGroups.length > 0 && (
         <section className="panel">
-          <div className="panel-head"><h2 id="dokumente">Weitere Dokumente</h2><span className="note">Laborbefunde, Mahlzeiten, Sonstiges</span></div>
+          <div className="panel-head"><h2 id="dokumente">Weitere Dokumente</h2><span className="note">Leistungstests, Laborbefunde, Mahlzeiten, Sonstiges</span></div>
           {docGroups.map(([k, l]) => (
             <div key={k} className="stack">
               <h3>{MEDIA_KINDS[k]} · {l.length}</h3>
@@ -236,6 +236,8 @@ export default async function Bilder({ searchParams, demo } = {}) {
                       {m.content_type?.startsWith("image/") ? <img src={`/api/media/${m.id}`} alt={`${MEDIA_KINDS[k]} vom ${fmt(m.day)}`} loading="lazy" /> : <div className="doc">PDF</div>}
                     </a>
                     <figcaption><span>{fmt(m.day)}{m.note ? ` · ${m.note}` : ""}</span></figcaption>
+                    {m.kind === "test" && m.extracted?.tests && <p className="note">{m.extracted.tests.map((t) => `${TEST_TYPES[t.test]?.name}: ${t.value} ${TEST_TYPES[t.test]?.unit}`).join(" · ")}</p>}
+                    {m.extract_error && <p className="note" style={{ color: "var(--crit)" }}>{m.extract_error}</p>}
                     <FileTools m={m} ai={ai} ro={ro} />
                   </figure>
                 ))}

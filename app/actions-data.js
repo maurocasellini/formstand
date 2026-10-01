@@ -14,9 +14,10 @@ import { intervals } from "@/lib/providers/intervals";
 import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload } from "@/lib/ai";
 import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
 import { runBodyAnalysis } from "@/lib/bodyai";
+import { applyTest } from "@/lib/testread";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
-import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS } from "@/lib/catalog";
+import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES } from "@/lib/catalog";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -142,7 +143,7 @@ export async function connectIntervals(_prev, form) {
   return r.ok ? { ok: `Verbunden${info.name ? ` als ${info.name}` : ""}. ${r.items} Datensätze der letzten 12 Monate geladen.` } : { error: `Verbunden, aber der erste Abruf schlug fehl: ${r.message}` };
 }
 
-const KINDS = ["body_photo", "meal", "inbody", "blood", "other"];
+const KINDS = ["body_photo", "meal", "inbody", "test", "blood", "other"];
 export async function uploadMedia(_prev, form) {
   const { viewer, subject, demo } = await ctx();
   if (demo) return DEMO;
@@ -172,6 +173,10 @@ export async function uploadMedia(_prev, form) {
     const m = await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null, pose });
     if (kind === "inbody" && ai) {
       try { const r = await applyInBody(subject.id, m, buf, viewer.id); notes.push(`${Object.keys(r.values).length} InBody-Werte ausgelesen (Messung vom ${r.day.split("-").reverse().join(".")})`); }
+      catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
+    }
+    if (kind === "test" && ai) {
+      try { const r = await applyTest(subject.id, m, buf, viewer.id); notes.push(`Test vom ${r.day.split("-").reverse().join(".")} übernommen: ${r.tests.map((t) => `${TEST_TYPES[t.test].label.replace(/ \(.*\)$/, "")} ${t.value} ${TEST_TYPES[t.test].unit}`).join(", ")}${r.hinweis ? ` (${r.hinweis})` : ""}`); }
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
   }
@@ -214,7 +219,11 @@ export async function changeMedia(_prev, form) {
   const pose = kind === "body_photo" && ["front", "side", "back"].includes(String(form.get("pose"))) ? String(form.get("pose")) : null;
   await repo.updateMedia(subject.id, m.id, { kind, pose });
   let msg = "Geändert.";
-  if (m.kind === "inbody" && kind !== "inbody") await repo.deleteManualBySource(subject.id, m.id);
+  if ((m.kind === "inbody" || m.kind === "test") && kind !== m.kind) await repo.deleteManualBySource(subject.id, m.id);
+  if (kind === "test" && m.kind !== "test" && (await aiReady())) {
+    try { const buf = await readFile(m.pathname); const r = await applyTest(subject.id, { ...m, kind }, buf, viewer.id); msg = `Geändert – ${r.tests.length} Testwert${r.tests.length > 1 ? "e" : ""} übernommen.`; }
+    catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); msg = `Geändert, aber Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 140)}`; }
+  }
   if (kind === "inbody" && m.kind !== "inbody" && (await aiReady())) {
     try { const buf = await readFile(m.pathname); const r = await applyInBody(subject.id, { ...m, kind }, buf, viewer.id); msg = `Geändert – ${Object.keys(r.values).length} InBody-Werte ausgelesen.`; }
     catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); msg = `Geändert, aber Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 140)}`; }

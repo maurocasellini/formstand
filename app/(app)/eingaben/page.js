@@ -3,7 +3,9 @@ import DateField from "@/components/DateField";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
-import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid } from "../../actions-data";
+import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia } from "../../actions-data";
+import FilePick from "@/components/FilePick";
+import { aiReady } from "@/lib/ai";
 import EveningForm from "@/components/EveningForm";
 import { eveningMap } from "@/lib/evening";
 import { INBODY_FIELDS } from "@/lib/ai";
@@ -17,6 +19,7 @@ const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 export default async function Eingaben({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const today = todayIso();
+  const ai = await aiReady();
   const allMan = (await repo.getManual(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
   const eve = eveningMap(allMan, addDays(today, -400));
   const gridDays = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
@@ -103,6 +106,14 @@ export default async function Eingaben({ demo } = {}) {
       <section className="grid2e">
         <div className="panel">
           <h2 id="test">Leistungstest eintragen</h2>
+          {!viewer.demo && (
+            <ActionForm action={uploadMedia} className="stack" submit="Hochladen & auslesen" busy="Liest aus… (ca. 15 s)">
+              <input type="hidden" name="kind" value="test" />
+              <FilePick name="file" accept="image/*,application/pdf" multiple hint="Screenshot oder PDF: Zwift-Ergebnis, Garmin-Laktatschwelle, Laborbericht, Schwimmtest …" />
+              <input type="hidden" name="day" value={today} />
+            </ActionForm>
+          )}
+          <p className="note">{ai ? "Die KI liest Testart, Datum und Werte aus – ein Laborbericht kann mehrere Werte liefern (z. B. Schwellenpuls und VO2max). Die Datei bleibt unter Körper → Dokumente erhalten." : "Automatisches Auslesen braucht die KI (Admin → Schnittstellen)."} Oder von Hand:</p>
           <ActionForm action={addManual}>
             <input type="hidden" name="kind" value="test" />
             <label className="f">Test<select name="test">{Object.entries(TEST_TYPES).map(([k, t]) => <option key={k} value={k}>{t.name} · {t.label}</option>)}</select></label>
