@@ -22,7 +22,7 @@ export function FitnessWork({ fp, goalsWeak = [], adopt, ro, base = "", link = f
           <span className="note">Der Wochenplan setzt dann Fokus-Einheiten dafür (max. 4 Schwächen).</span>
         </ActionForm>
       )}
-      {link && <Link className="note" href={`${base}/eingaben#fitness`}>Alle Tests und Stufen →</Link>}
+      {link && <Link className="note" href={`${base}/tests#fitness`}>Alle Tests und Stufen →</Link>}
     </div>
   );
 }

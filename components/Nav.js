@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 export default function Nav({ admin, demo }) {
   const p = usePathname();
   const items = demo
-    ? [["/demo", "Übersicht"], ["/demo/ziele", "Ziele & Plan"], ["/demo/entwicklung", "Entwicklung"], ["/demo/bilder", "Körper"], ["/demo/eingaben", "Eingaben"]]
-    : [["/heute", "Übersicht"], ["/ziele", "Ziele & Plan"], ["/entwicklung", "Entwicklung"], ["/bilder", "Körper"], ["/eingaben", "Eingaben"], ["/quellen", "Quellen"]];
+    ? [["/demo", "Übersicht"], ["/demo/ziele", "Ziele & Plan"], ["/demo/entwicklung", "Entwicklung"], ["/demo/bilder", "Körper"], ["/demo/tests", "Tests"], ["/demo/tagebuch", "Tagebuch"]]
+    : [["/heute", "Übersicht"], ["/ziele", "Ziele & Plan"], ["/entwicklung", "Entwicklung"], ["/bilder", "Körper"], ["/tests", "Tests"], ["/tagebuch", "Tagebuch"], ["/quellen", "Quellen"]];
   if (admin && !demo) items.push(["/admin", "Admin"]);
   return (
     <nav className="tabs" aria-label="Bereiche">

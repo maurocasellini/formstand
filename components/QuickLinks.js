@@ -3,9 +3,11 @@ import Link from "next/link";
 // Schnellzugriff auf der Übersicht: Wohin für welche Aufgabe.
 const LINKS = [
   ["/ziele?d=today#plan", "Training anpassen", "Keine Zeit, mit Buddy, fester Termin"],
-  ["/eingaben#training", "Training nachtragen", "Einheit ohne Uhr erfassen"],
+  ["/tagebuch#training", "Training nachtragen", "Einheit ohne Uhr erfassen"],
+  ["/tests#test", "Test eintragen", "Kraft, Lauf, Fitness, FTP"],
   ["/ziele#plan", "Wochenplan", "Was diese Woche ansteht"],
-  ["/ziele#wettkampf", "Wettkämpfe & Ziele", "Rennen, Schwächen, Zeitbudget"],
+  ["/ziele#meineziele", "Meine Ziele", "Was bis wann – auf Kurs?"],
+  ["/ziele#wettkampf", "Wettkämpfe", "Rennen, Schwächen, Zeitbudget"],
   ["/bilder#hinzufuegen", "Foto / InBody hochladen", "Formstand erkennt selbst, was es ist"],
   ["/bilder#verlauf", "Körperentwicklung", "InBody, Fotos, Vorher/Nachher"],
   ["/bilder#messwerte", "Gewicht & Messwerte", "Gewicht, Körperfett, Grösse"],

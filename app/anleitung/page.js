@@ -24,7 +24,7 @@ const Tip = ({ tone = "info", children }) => <div className={`g-tip ${tone}`}>{c
 
 const TOC = [
   ["Einrichten", [["konto", "1", "Konto anlegen"], ["app", "2", "Aufs Handy"], ["garmin", "3", "Uhr & Apps verbinden"], ["push", "4", "Morgen-Erinnerung"]]],
-  ["Loslegen", [["ziele", "5", "Ziele & Wettkämpfe"], ["koerper", "6", "Tests & Körper"], ["taeglich", "7", "Jeden Tag"]]],
+  ["Loslegen", [["ziele", "5", "Ziele & Wettkämpfe"], ["tests", "6", "Tests"], ["koerper", "7", "Körper"], ["taeglich", "8", "Jeden Tag & Tagebuch"]]],
   ["Optional", [["historie", "A", "Garmin-Historie"], ["strava", "B", "Strava & WHOOP direkt"]]],
   ["Hilfe", [["hilfe", "?", "Häufige Fragen"], ["admin", "⚙", "Für den Admin"]]],
 ];
@@ -117,38 +117,62 @@ export default async function Anleitung() {
 
             <h2 className="g-part">Loslegen</h2>
 
-            <Step n="5" id="ziele" title="Ziele, Wettkämpfe und Schwächen" time="3 Minuten">
-              <Sub k="1" title="Ziele & Plan ausfüllen">
+            <Step n="5" id="ziele" title="Ziele, Wettkämpfe und Schwächen" time="5 Minuten">
+              <Sub k="1" title="Meine Ziele: was bis wann?">
+                <p><b>Ziele & Plan → Meine Ziele → + Neues Ziel:</b> Messgrösse wählen (Gewicht, Körperfett, Muskelmasse, FTP, jeder Test – oder ein freies Ziel), <b>Zielwert</b> und <b>Zieldatum</b> setzen. Der Startwert kommt aus deinen letzten Messungen.</p>
+                <ul>
+                  <li>Beispiele: <i>Körpergewicht 76 kg bis 30.06.</i> · <i>Kniebeuge 140 kg (1RM geschätzt) bis Ende Jahr</i> · <i>5 km unter 21:30 bis April</i>.</li>
+                  <li>Ein <b>Abnehmziel</b> stellt die Ernährung auf das nötige Tempo ein (max. 1 % pro Woche). Ein <b>Kraft-, Lauf- oder FTP-Ziel</b> setzt Fokus-Einheiten im Wochenplan. Die <b>KI</b> bezieht sich in jeder Empfehlung darauf.</li>
+                  <li>Auf der <b>Übersicht</b> zeigt „Deine Ziele · auf Kurs?“ Fortschritt, Status und was pro Woche noch nötig ist. Montags kommt der Stand auch als Push.</li>
+                </ul>
+              </Sub>
+              <Sub k="2" title="Fokus, Schwächen & Zeit">
                 <ol>
                   <li><b>Hauptziel</b> wählen: Leistung, Form halten, Abnehmen, Muskelaufbau oder Gesundheit.</li>
-                  <li>Bis zu 4 <b>Schwächen</b> antippen und die wichtigste festlegen.</li>
+                  <li>Bis zu 4 <b>Schwächen</b> antippen und die wichtigste festlegen – oder die Vorschläge aus Tests und Körperanalyse übernehmen.</li>
                   <li><b>Trainingstage</b>, <b>Stunden pro Woche</b> und den <b>Tag für die lange Einheit</b> eintragen → Speichern.</li>
                 </ol>
               </Sub>
-              <Sub k="2" title="Wettkampf suchen">
+              <Sub k="3" title="Wettkampf suchen">
                 <p>Namen ins Suchfeld, z. B. „ATHX St. Gallen“ → <b>Suchen</b>. Formstand findet Datum, Format und Kategorien und fragt nach, welche du startest. Dann die Priorität wählen: <b>A</b> = Saisonhöhepunkt mit Tapering, <b>B</b> = wichtig, <b>C</b> = läuft als Training mit.</p>
               </Sub>
-              <Sub k="3" title="Woche an dein Leben anpassen">
+              <Sub k="4" title="Woche an dein Leben anpassen">
                 <p>Formstand schlägt die Woche vor – bei jedem Tag auf <b>Anpassen</b>: anders trainieren (z. B. Ausfahrt mit Buddy), mit anderem Tag tauschen, nur begrenzt Zeit oder Ruhetag. Mit <b>jede Woche so</b> wird es ein fester Termin. Verpasste harte Einheiten verschiebt Formstand selbst.</p>
               </Sub>
             </Step>
 
-            <Step n="6" id="koerper" title="Tests, Profil und Körper" time="nach Bedarf">
+            <Step n="6" id="tests" title="Tests" time="einmal pro 6–10 Wochen">
+              <p>Unter <b>Tests</b> trägst du ein, was du gemessen hast – oder lädst einen Screenshot/PDF hoch, die KI liest die Werte aus.</p>
               <div className="g-two">
-                <Sub title="Leistungstests"><p><b>Eingaben → Leistungstest:</b> FTP (z. B. Zwift Ramp Test), Schwellenpuls, CSS fürs Schwimmen. Daraus werden Watt-, Puls- und Pace-Vorgaben.</p></Sub>
-                <Sub title="Gewicht & Profil"><p><b>Körper → Gewicht & Grösse:</b> Gewicht, Körperfett und Grösse (Waage und InBody kommen automatisch). <b>Konto → Trainingsprofil:</b> Sportart und Jahrgang.</p></Sub>
+                <Sub title="Ausdauer-Diagnostik"><p>FTP (z. B. Zwift Ramp Test), Schwellenpuls (Garmin, Labor), VO2max, CSS fürs Schwimmen. Daraus werden Watt-, Puls- und Pace-Bereiche.</p></Sub>
+                <Sub title="Maximalkraft"><p>Kreuzheben, Kniebeuge, Frontkniebeuge, Bankdrücken, Schulterdrücken, Push Press – mit <b>1–5 Wiederholungen</b>, kein 1RM-Test nötig. Formstand schätzt das 1RM.</p></Sub>
+                <Sub title="Lauf & Rudern"><p>400 m, 800 m, 1 km, 5 km, Cooper-Test, Norwegian 4×4, Rudern 500/2000 m, SkiErg 1000 m. Zeit als m:ss, die Pace rechnet Formstand.</p></Sub>
+                <Sub title="Grundlagenfitness"><p>Burpees und Wall Balls auf Zeit (1–10 min), Liegestütz, Klimmzüge, Plank, Standweitsprung.</p></Sub>
               </div>
-              <Sub title="Körper">
-                <p>InBody-Auswertung (PDF oder Foto) und Körperfotos im selben Feld hochladen – Formstand erkennt selbst, was es ist, liest InBody-Werte aus und ordnet Fotos nach Pose. Unter <b>Körperentwicklung</b> stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich.</p>
+              <Sub title="Wo die Tests einfliessen">
+                <ul>
+                  <li><b>Zonen:</b> Watt-, Puls- und Pace-Vorgaben in jeder Einheit und in der Entscheidung für heute.</li>
+                  <li><b>Arbeitsgewichte:</b> Krafteinheiten im Wochenplan mit konkreten Gewichten, z. B. „Kniebeuge 4×5 @ 100 kg“.</li>
+                  <li><b>Fitness-Profil:</b> Jede Leistung wird eingestuft (Einsteiger bis Elite, Normen für Männer/Frauen). Die schwächsten Bereiche erscheinen als „Daran arbeiten wir“ – mit einem Klick in die Ziele.</li>
+                  <li><b>Ziele:</b> Test-Ziele messen ihren Fortschritt an deinen Tests.</li>
+                  <li><b>KI:</b> Tagesempfehlung und Körperanalyse kennen Testwerte und Stufen.</li>
+                </ul>
               </Sub>
-              <Tip>Körperfotos alle 2–4 Wochen, morgens nüchtern, gleiches Licht und gleicher Abstand.</Tip>
+              <Tip>Ausgeruht testen, nach einem lockeren Tag, immer unter ähnlichen Bedingungen. Bei jedem Test steht, wann der nächste fällig ist.</Tip>
             </Step>
 
-            <Step n="7" id="taeglich" title="Jeden Tag" time="10 Sekunden">
+            <Step n="7" id="koerper" title="Körper" time="alle 2–4 Wochen">
+              <Sub title="Hochladen"><p><b>Körper → Hochladen:</b> InBody-Auswertung (PDF oder Foto) und Körperfotos ins selbe Feld – Formstand erkennt selbst, was es ist, liest InBody-Werte aus und ordnet Fotos nach Pose. Gewicht, Körperfett und Grösse trägst du daneben unter <b>Gewicht & Grösse</b> ein (Waage und InBody kommen automatisch).</p></Sub>
+              <Sub title="KI-Coach: dein Körper"><p>Nach jedem Foto- oder InBody-Upload macht die KI eine Gesamtanalyse: Körperfett geschätzt, was gut ist, wo Potenzial liegt, <b>Entwicklung seit dem ersten Foto</b> und der passende Trainingsfokus. Mit <b>Analyse neu durchführen</b> jederzeit aktualisieren; frühere Analysen bleiben im Verlauf.</p></Sub>
+              <Sub title="Entwicklung & Aufräumen"><p>Unter <b>Körperentwicklung</b> stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich. Fotos und Dateien lassen sich direkt löschen, auch ein ganzer Tag.</p></Sub>
+              <Tip>Körperfotos morgens nüchtern, gleiches Licht, gleicher Abstand – Front, Seite, Rücken.</Tip>
+            </Step>
+
+            <Step n="8" id="taeglich" title="Jeden Tag & Tagebuch" time="10 Sekunden">
               <div className="g-day">
-                <div><span>Morgens</span><p>Uhr synchronisieren, in Formstand einchecken (Energie, Motivation, Stress, Muskelkater, Zeit) und die <b>Entscheidung für heute</b> lesen.</p></div>
-                <div><span>Nach dem Training</span><p>Bei <b>Wie hart war's?</b> die Anstrengung antippen.</p></div>
-                <div><span>Einflussfaktoren</span><p>Alkohol (Gläser), spätes Essen, Stress, Sauna, Mobility … antippen – auch rückwirkend für jedes Datum. Formstand lernt daraus, wie du am Morgen danach reagierst.</p></div>
+                <div><span>Morgens</span><p>Uhr synchronisieren, in Formstand einchecken (Energie, Motivation, Stress, Muskelkater, Zeit) und die <b>Entscheidung für heute</b> lesen. Darüber siehst du, ob deine Ziele auf Kurs sind.</p></div>
+                <div><span>Nach dem Training</span><p>Bei <b>Wie hart war's?</b> die Anstrengung antippen. Einheiten ohne Uhr unter <b>Tagebuch → Training nachtragen</b>.</p></div>
+                <div><span>Einflussfaktoren</span><p>Alkohol (Gläser), spätes Essen, Stress, Sauna, Mobility … im <b>Tagebuch</b> antippen – auch rückwirkend für jedes Datum. Formstand lernt daraus, wie du am Morgen danach reagierst.</p></div>
               </div>
             </Step>
 

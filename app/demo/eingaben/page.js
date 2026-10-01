@@ -1,8 +1,3 @@
-import Eingaben from "../../(app)/eingaben/page";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-export default function DemoEingaben(props) {
-  return <Eingaben {...props} demo />;
-}
+export default function DemoEingaben() { redirect("/demo/tagebuch"); }

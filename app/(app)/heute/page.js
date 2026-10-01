@@ -268,7 +268,7 @@ export default async function Heute({ demo } = {}) {
       )}
 
       <section className="panel">
-        <div className="panel-head"><h2>Einflussfaktoren</h2><Link className="note" href={`${base}/eingaben#trigger`}>Mehrere Tage nachtragen →</Link></div>
+        <div className="panel-head"><h2>Einflussfaktoren</h2><Link className="note" href={`${base}/tagebuch#trigger`}>Mehrere Tage nachtragen →</Link></div>
         <EveningForm entries={eveningMap(manual, addDays(today, -60))} today={today} action={saveEvening} factors={TRIGGERS.filter(([k]) => k !== "alkohol")} />
         {todayTrig.length > 0 && <p className="note">{todayTrig.map((t) => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? `Deine Reaktion nach ${triggerName(t.data?.t)}: HRV ${r.metrics.hrv.diff > 0 ? "+" : "−"}${Math.abs(Math.round(r.metrics.hrv.diff))} %${r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}. ` : ""; }).join("")}</p>}
       </section>
@@ -280,7 +280,7 @@ export default async function Heute({ demo } = {}) {
           ["Einmal eingecheckt", manual.some((m) => m.kind === "checkin"), "/heute#checkin", "/anleitung#taeglich"],
           ["Ziele & Schwächen gesetzt", hasGoals, "/ziele", "/anleitung#ziele"],
           ["Morgen-Erinnerung an", pushOn, "/konto", "/anleitung#push"],
-          ["Leistungstest eingetragen", manual.some((m) => m.kind === "test"), "/eingaben", "/anleitung#koerper"],
+          ["Ersten Test eingetragen", manual.some((m) => m.kind === "test"), "/tests", "/anleitung#tests"],
         ];
         const done = steps.filter((x) => x[1]).length;
         if (done === steps.length) return null;
