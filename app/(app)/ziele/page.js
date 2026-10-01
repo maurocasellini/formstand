@@ -4,6 +4,8 @@ import { todayModel } from "@/lib/coach";
 import { weekPlan, mondayOf, DAYS, PHASES } from "@/lib/plan";
 import { review, summarize, ACT_LABEL } from "@/lib/adherence";
 import { changes } from "@/lib/insights";
+import { bodyProgress } from "@/lib/body";
+import { periodReview, reviewText } from "@/lib/weekly";
 import * as repo from "@/lib/repo";
 import { FOCUS, EVENT_TYPES, WEAKNESSES } from "@/lib/catalog";
 import { saveGoals, addEvent, deleteEvent } from "../../actions-data";
@@ -24,8 +26,15 @@ export default async function Ziele({ searchParams }) {
   const { goals, today, all, zones, decision, phase } = m;
   const week = sp?.w === "1" ? 1 : 0;
   const plan = weekPlan(goals, addD(mondayOf(today), 7 * week), m.user || {}, zones);
-  const rows = review(all, { ...m.ctx, goals: m.hasGoals ? goals : null }, 28);
+  const rowsAll = review(all, { ...m.ctx, goals: m.hasGoals ? goals : null }, 62);
+  const rows = rowsAll.slice(-28);
   const sum = summarize(rows);
+  const mon = mondayOf(today), lw = periodReview(all, rowsAll, addD(mon, -7), addD(mon, -1));
+  const firstThis = today.slice(0, 8) + "01", firstPrev = (() => { const d = new Date(firstThis + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 10); })();
+  const lm = periodReview(all, rowsAll, firstPrev, addD(firstThis, -1));
+  const monthName = new Date(firstPrev + "T12:00:00Z").toLocaleDateString("de-CH", { month: "long" });
+  const body = bodyProgress(all, m.manual, goals);
+  const showBody = goals.focus === "cut" || goals.focus === "muscle" || goals.targetWeight || goals.targetBodyfat;
   const manual = await repo.getManual(subject.id);
   const ch = Object.fromEntries(changes(all, { focus: goals.focus, manual }).map((c) => [c.key, c]));
   const weak = [goals.mainWeakness, ...(goals.weaknesses || [])].filter(Boolean);
@@ -62,7 +71,8 @@ export default async function Ziele({ searchParams }) {
                 <div className="wd-h"><b>{DAYS[x.dow]}</b><span className="note">{short(x.day)}</span><span className={`tag ${TYPE[x.type]?.[1] || ""}`}>{TYPE[x.type]?.[0] || x.type}</span></div>
                 <div className="wd-t">{x.title}{x.min ? <span className="note"> · {x.min} min</span> : null}</div>
                 <p>{x.detail}</p>
-                {(x.focus || x.focus2) && <span className="focus">Fokus: {[x.focus, x.focus2].filter(Boolean).map((f) => WEAKNESSES[f]?.[0]).join(" + ")}</span>}
+                {x.second && <div className="wd-2"><b>+ {x.second.title}</b><span className="note"> · {x.second.min} min</span><p>{x.second.detail}</p></div>}
+                {(x.focus || x.focus2 || x.second?.focus) && <span className="focus">Fokus: {[...new Set([x.focus, x.focus2, x.second?.focus].filter(Boolean))].map((f) => WEAKNESSES[f]?.[0]).join(" + ")}</span>}
                 {changed && <span className="adj">Heute angepasst: {decision.title}</span>}
               </div>
             );
@@ -111,9 +121,53 @@ export default async function Ziele({ searchParams }) {
               <label className="f">Stunden pro Woche<input type="number" name="hoursPerWeek" min="2" max="25" step="0.5" defaultValue={goals.hoursPerWeek} /></label>
               <label className="f">Langer Tag<select name="longDay" defaultValue={goals.longDay}>{DAYNAMES.map((n, i) => <option key={i} value={i}>{n}</option>)}</select></label>
             </div>
+            <div className="form">
+              <label className="f">Zielgewicht kg<input type="number" name="targetWeight" step="0.1" min="35" max="200" defaultValue={goals.targetWeight ?? ""} placeholder="optional" /></label>
+              <label className="f">Ziel-Körperfett %<input type="number" name="targetBodyfat" step="0.1" min="4" max="45" defaultValue={goals.targetBodyfat ?? ""} placeholder="optional" /></label>
+              <label className="f">Tempo (Abnehmen)<select name="rate" defaultValue={goals.rate}><option value="0.25">sanft · 0,25 %/Woche</option><option value="0.5">normal · 0,5 %/Woche</option><option value="0.75">zügig · 0,75 %/Woche</option><option value="1">maximal · 1 %/Woche</option></select></label>
+            </div>
+            <label className="f">Schwimmeinheiten pro Woche (Triathlon)<select name="swimsPerWeek" defaultValue={goals.swimsPerWeek ?? ""}><option value="">automatisch nach Phase</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
             <label className="f">Was dir sonst wichtig ist (liest die KI mit)<textarea name="note" rows={2} maxLength={500} defaultValue={goals.note || ""} placeholder="z. B. am Berg verliere ich immer den Anschluss; Knie links empfindlich" /></label>
           </ActionForm>
         </div>
+      </section>
+
+      <section className="grid2e">
+        <div className="panel">
+          <div className="panel-head"><h2>Rückblick</h2><span className="note">kommt montags auch als Push</span></div>
+          {[[`Letzte Woche (${short(lw.from)}–${short(lw.to)})`, lw], [`${monthName[0].toUpperCase() + monthName.slice(1)}`, lm]].map(([label, p]) => (
+            <div key={label} className="rv">
+              <b>{label}</b>
+              <div className="rv-g">
+                <span><em>{p.hours} h</em>Training{p.prevHours != null ? ` (Ø ${p.prevHours})` : ""}</span>
+                <span><em>{p.quality}×</em>hart · {p.strength}× Kraft</span>
+                <span><em>{p.adherence ?? "–"} %</em>Plan-Treue</span>
+                <span><em>{p.focus}/{p.focusPlan}</em>Fokus-Einheiten</span>
+                <span><em>{p.score != null ? Math.round(p.score) : "–"}</em>Ø Tagesform</span>
+                <span><em>{p.alc}</em>Alkohol-Abende</span>
+              </div>
+              {p.off.length > 0 && <p className="note">Härter als empfohlen: {p.off.map((o) => `${short(o.day)} (${o.rec} → ${o.did})`).join(", ")}</p>}
+            </div>
+          ))}
+          <div className="rv"><b>Diese Woche</b><p className="note">{plan.phase.label} · {plan.hours} h geplant · {plan.items.filter((x) => x.type === "quality").map((x) => x.title).join(", ") || "keine harten Einheiten"}{plan.items.some((x) => x.type === "race") ? ` · Wettkampf: ${plan.items.find((x) => x.type === "race").title.replace("Wettkampf: ", "")}` : ""}</p></div>
+        </div>
+        {showBody ? (
+          <div className="panel">
+            <div className="panel-head"><h2>Körperziel</h2><span className="note">{FOCUS[goals.focus][0]}</span></div>
+            <div className="hl ctx">
+              <div className="hli"><span>Gewicht (Ø 7 Tage)</span><b>{body.now ?? "–"}<small className="note"> kg</small></b>{goals.targetWeight && <small className="note">Ziel {goals.targetWeight} kg · noch {body.now != null ? Math.abs(Math.round((body.now - goals.targetWeight) * 10) / 10) : "–"} kg</small>}</div>
+              <div className="hli"><span>Trend 4 Wochen</span><b>{body.slope != null ? `${body.slope > 0 ? "+" : ""}${body.slope}` : "–"}<small className="note"> kg/Woche</small></b>{body.pct != null && <small className="note">{body.pct > 0 ? "+" : ""}{body.pct} % pro Woche</small>}</div>
+              {body.eta && <div className="hli"><span>Ziel erreicht etwa</span><b>{fmt(body.eta)}</b><small className="note">in ~{body.weeks} Wochen beim jetzigen Tempo</small></div>}
+              {body.bfNow != null && <div className="hli"><span>Körperfett</span><b>{body.bfNow}<small className="note"> %</small></b>{goals.targetBodyfat && <small className="note">Ziel {goals.targetBodyfat} %</small>}</div>}
+              {decision?.nutrition && <div className="hli"><span>Heute essen</span><b>{decision.nutrition.kcal}<small className="note"> kcal</small></b><small className="note">{decision.nutrition.protein_g} g Protein · {decision.nutrition.carbs_g} g KH · {decision.nutrition.fat_g} g Fett</small></div>}
+            </div>
+            {body.warnings.map((w) => <div key={w} className="notice warn" style={{ marginTop: 8 }}>{w}</div>)}
+            {decision?.nutrition?.note && <p className="note">{decision.nutrition.note}</p>}
+            <p className="note">Defizit nur an lockeren Tagen, nie in Aufbau-Spitzen oder vor Wettkämpfen. Bedarf aus deinem Grundumsatz (InBody, sonst geschätzt) plus Training.</p>
+          </div>
+        ) : (
+          <div className="panel"><h2>Körperziel</h2><p className="muted">Für Abnehmen oder Muskelaufbau oben das Hauptziel wählen und optional Zielgewicht oder Körperfett eintragen. Dann passt Formstand Kalorien und Makros täglich an.</p></div>
+        )}
       </section>
 
       {weak.length > 0 && (

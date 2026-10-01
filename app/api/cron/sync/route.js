@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncAll } from "@/lib/sync";
 import { adviceForAll } from "@/lib/coach";
-import { morningPush } from "@/lib/push";
+import { morningPush, reviewPush } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -15,5 +15,7 @@ export async function GET(req) {
   try { advice = await adviceForAll(); } catch (e) { advice = { error: String(e.message || e) }; }
   let push;
   try { push = await morningPush(); } catch (e) { push = { error: String(e.message || e) }; }
-  return NextResponse.json({ sync, advice, push });
+  let reviews;
+  try { reviews = await reviewPush(); } catch (e) { reviews = { error: String(e.message || e) }; }
+  return NextResponse.json({ sync, advice, push, reviews });
 }

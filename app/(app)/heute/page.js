@@ -59,12 +59,13 @@ function Decision({ d, a }) {
       <div className="adv-head"><span className={`pill ${d.state}`}>{d.title}</span></div>
       {a?.summary && <p className="adv-sum">{a.summary}</p>}
       <dl>
-        <div className="main"><dt>Heute</dt><dd><b>{d.main.what}</b> · {d.main.detail}</dd></div>
+        <div className="main"><dt>Heute</dt><dd><b>{d.main.what}</b> · {d.main.detail}{d.main.second && <span className="nl2"><b>+ {d.main.second.title}</b> ({d.main.second.min} min) · {d.main.second.detail}</span>}</dd></div>
         {d.avoid.length > 0 && <div className="no"><dt>Nicht empfohlen</dt><dd>{d.avoid.join(" · ")}</dd></div>}
         {d.alt && <div><dt>Alternative</dt><dd><b>{d.alt.what}</b> · {d.alt.detail}</dd></div>}
         <div><dt>Warum</dt><dd><ul>{(a?.why?.length ? a.why : d.why).map((w, i) => <li key={i}>{w}</li>)}</ul></dd></div>
         <div><dt>Ernährung</dt><dd>{a?.nutrition || <>
-          {n.carbs_g} g Kohlenhydrate ({n.carbs_gkg} g/kg) · {n.protein_g} g Protein · {n.fluid_l} l trinken
+          <b>{n.kcal} kcal</b> · {n.carbs_g} g Kohlenhydrate ({n.carbs_gkg} g/kg) · {n.protein_g} g Protein · {n.fat_g} g Fett · {n.fluid_l} l trinken
+          {n.note && <span className="nl">{n.note}</span>}
           {[n.pre, n.during, n.post].filter(Boolean).map((x, i) => <span key={i} className="nl">{x}</span>)}
         </>}</dd></div>
         {a?.recovery && <div><dt>Erholung</dt><dd>{a.recovery}</dd></div>}

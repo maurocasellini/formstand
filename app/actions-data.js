@@ -237,6 +237,10 @@ export async function saveGoals(_prev, form) {
     weaknesses: weak.filter((w) => w !== main), mainWeakness: main,
     daysPerWeek: scale(form.get("daysPerWeek"), 2, 7) ?? g.daysPerWeek, hoursPerWeek: Math.max(2, Math.min(25, numOf(form.get("hoursPerWeek")) ?? g.hoursPerWeek)),
     longDay: scale(form.get("longDay"), 0, 6) ?? g.longDay, note: String(form.get("note") || "").slice(0, 500), updated_at: new Date().toISOString(),
+    targetWeight: (() => { const v = numOf(form.get("targetWeight")); return v && v >= 35 && v <= 200 ? v : null; })(),
+    targetBodyfat: (() => { const v = numOf(form.get("targetBodyfat")); return v && v >= 4 && v <= 45 ? v : null; })(),
+    rate: [0.25, 0.5, 0.75, 1].includes(numOf(form.get("rate"))) ? numOf(form.get("rate")) : g.rate,
+    swimsPerWeek: scale(form.get("swimsPerWeek"), 1, 6),
   }));
   revalidatePath("/", "layout");
   return { ok: "Gespeichert. Plan und Tagesentscheidung sind angepasst." };

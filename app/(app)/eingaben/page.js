@@ -1,7 +1,7 @@
 import { viewerAndSubject } from "@/lib/subject";
 import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
-import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS } from "@/lib/catalog";
+import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS, SWIM_ZONES, pace } from "@/lib/catalog";
 import { addManual, deleteManual, updateProfile } from "../../actions-data";
 import { INBODY_FIELDS } from "@/lib/ai";
 import { analyzeTriggers } from "@/lib/triggers";
@@ -17,7 +17,7 @@ export default async function Eingaben() {
   const allMan = (await repo.getManual(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
   const entries = allMan.slice(0, 60);
   const tests = allMan.filter((e) => e.kind === "test");
-  const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr);
+  const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr), css = tests.find((t) => TEST_TYPES[t.data?.test]?.css);
   const kg = Number(subject.weight_kg) || null;
 
   // Persönliche Trigger-Auswertung (12 Monate)
@@ -105,6 +105,11 @@ export default async function Eingaben() {
               {HR_ZONES.map(([n, a, b]) => <tr key={n}><td>{n}</td><td className="r num">{b ? `${a ? Math.round(a * 100) : "<"}–${Math.round(b * 100)}` : `> ${Math.round(a * 100)}`}</td><td className="r num">{b ? `${a ? Math.round(Number(lt.value) * a) : "<"}–${Math.round(Number(lt.value) * b)}` : `> ${Math.round(Number(lt.value) * a)}`}</td></tr>)}
             </tbody></table></div>
           )}
+          {css && (
+            <div className="tbl-wrap"><table><thead><tr><th>Schwimmzone</th><th className="r">Pace /100 m (CSS {pace(Number(css.value))})</th></tr></thead><tbody>
+              {SWIM_ZONES.map(([n, a, b]) => { const c = Number(css.value); return <tr key={n}><td>{n}</td><td className="r num">{a == null ? `schneller als ${pace(c + b)}` : b == null ? `langsamer als ${pace(c + a)}` : `${pace(c + a)}–${pace(c + b)}`}</td></tr>; })}
+            </tbody></table></div>
+          )}
           {ftp && <p className="note">Nächster FTP-Test fällig: {fmt(addDays(ftp.day, 7 * (TEST_TYPES[ftp.data.test]?.wks || 8)))}</p>}
         </div>
       </section>
@@ -118,7 +123,7 @@ export default async function Eingaben() {
               <tr key={e.id}>
                 <td className="num">{fmt(e.day)}</td>
                 <td>{KIND[e.kind] || e.kind}{e.source_media && <span className="src">aus InBody</span>}{e.is_demo && <span className="src">Beispiel</span>}</td>
-                <td className="num">{e.kind === "inbody" ? (e.data?.inbody_score != null ? `Score ${e.data.inbody_score}` : "") : e.value == null ? "" : Number(e.value)}{e.kind === "inbody" ? "" : e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? ` ${TEST_TYPES[e.data?.test]?.unit || ""}` : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
+                <td className="num">{e.kind === "inbody" ? (e.data?.inbody_score != null ? `Score ${e.data.inbody_score}` : "") : e.value == null ? "" : Number(e.value)}{e.kind === "inbody" ? "" : e.kind === "weight" ? " kg" : e.kind === "bodyfat" ? " %" : e.kind === "test" ? (e.data?.test === "css" ? ` s (${pace(Number(e.value))}/100 m)` : ` ${TEST_TYPES[e.data?.test]?.unit || ""}`) : e.kind === "trigger" && e.data?.t === "alkohol" ? " Gl." : ""}</td>
                 <td className="wrap">{e.kind === "inbody" ? ["smm_kg", "fat_mass_kg", "body_fat_pct", "visceral_level"].filter((f) => e.data?.[f] != null).map((f) => `${INBODY_FIELDS[f][0]} ${e.data[f]}${INBODY_FIELDS[f][1] ? " " + INBODY_FIELDS[f][1] : ""}`).join(" · ") : e.kind === "trigger" ? triggerName(e.data?.t) : e.kind === "test" ? `${TEST_TYPES[e.data?.test]?.name || e.data?.test}${e.data?.note ? " · " + e.data.note : ""}` : e.data?.text || ""}</td>
                 <td><form action={deleteManual}><input type="hidden" name="id" value={e.id} /><button className="x" type="submit" aria-label="Löschen">✕</button></form></td>
               </tr>))}</tbody>
