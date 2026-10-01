@@ -16,6 +16,8 @@ import { getTodayAdvice, todayModel } from "@/lib/coach";
 import { ACT_LABEL } from "@/lib/adherence";
 import ActionForm from "@/components/ActionForm";
 import Targets from "@/components/Targets";
+import Spark from "@/components/Spark";
+import { trendTiles, findings, weekStatus } from "@/lib/overview";
 import { targetsOf } from "@/lib/targets";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
@@ -98,13 +100,17 @@ function Status({ T, st, cx, ls }) {
   ].filter(Boolean);
   return (
     <div className="stat">
-      <div className="stat-big">
-        <div className={`sb ${stateOf(T?.scoreObj)}`}><span>Erholung</span><b>{T?.scoreObj ?? "–"}</b><small>{T?.scoreObj == null ? "keine Nachtdaten" : "Messwerte der Nacht"}</small></div>
-        <div className={`sb ${stateOf(T?.score)}`}><span>Bereitschaft</span><b>{T?.score ?? "–"}</b><small className={`pill ${stateOf(T?.score)}`}>{stateText(T?.score)}</small></div>
+      {/* Eine Zahl: Bereitschaft. Die reine Nacht-Erholung nur, wenn der Check-in sie verschiebt */}
+      <div className="stat-big one">
+        <div className={`sb ${stateOf(T?.score)}`}><span>Bereitschaft heute</span><b>{T?.score ?? "–"}<small className="of">/100</small></b><small className={`pill ${stateOf(T?.score)}`}>{stateText(T?.score)}</small></div>
+        <div className="sb-side">
+          {T?.scoreObj != null && T?.checkin && T.scoreObj !== T.score ? <p><b>{T.scoreObj}</b> aus den Messwerten der Nacht, dein Check-in {T.score > T.scoreObj ? "hebt" : "senkt"} sie auf {T.score}.</p>
+            : <p>{T?.scoreObj == null ? (T?.score != null ? "Nur aus deinem Check-in – keine Messwerte der Nacht." : "Noch keine Werte für heute.") : T?.checkin ? "Messwerte der Nacht + Check-in." : "Aus den Messwerten der Nacht. Mit dem Check-in wird sie genauer."}</p>}
+          {night.length ? <p className="note">{night.join(" · ")} · vs. dein Ø</p> : <p className="note">HRV, Ruhepuls und Schlaf von heute fehlen – Garmin-App synchronisieren; in intervals.icu die Wellness-Daten erlauben.</p>}
+        </div>
       </div>
-      {night.length ? <p className="note">{night.join(" · ")} · vs. dein Ø</p> : <p className="note">HRV, Ruhepuls und Schlaf von heute fehlen – Garmin-App synchronisieren; in intervals.icu die Wellness-Daten erlauben.</p>}
       <div className="parts">{parts.map(([n, v]) => (
-        <div key={n} className="drv"><span>{n}</span><div className="meter m2"><i style={{ width: `${v ?? 0}%`, background: `var(--${stateColor(v)})` }} /></div><span className="num" style={{ textAlign: "right", fontWeight: 600 }}>{v ?? "–"}</span></div>
+        <div key={n} className="drv"><span>{n}</span><div className="meter m2"><i style={{ width: `${v ?? 0}%`, background: `var(--${stateColor(v)})` }} /></div><span className="num" style={{ textAlign: "right", fontWeight: 600 }} title={v == null ? "keine Daten von heute" : undefined}>{v ?? "–"}</span></div>
       ))}</div>
       {ls && (
         <div className="loads"><span className="lbl">Belastung 7 Tage vs. dein Schnitt</span>
@@ -142,6 +148,9 @@ export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = await todayModel(subject.id);
   const tg = targetsOf(goals, manual, all, today);
+  const tiles = trendTiles(all);
+  const fnd = findings(all, { activities, st, goals, triggers });
+  const ws = hasGoals ? weekStatus(week, all, activities, today) : null;
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
   const ck = T?.checkin || null;
@@ -222,6 +231,45 @@ export default async function Heute({ demo } = {}) {
             <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
+        </section>
+      )}
+
+      {hasAny && fnd.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Was auffällt</h2><span className="note">automatisch erkannt aus deinen Daten · wichtigstes zuerst</span></div>
+          <div className="finds">{fnd.slice(0, 6).map((f) => (
+            <div key={f.title} className={`find ${f.tone}`}><b>{f.title}</b><p>{f.text}</p></div>
+          ))}</div>
+        </section>
+      )}
+
+      {hasAny && tiles.length > 0 && (
+        <section className="panel">
+          <div className="panel-head"><h2>Trends</h2><span className="note">letzte 4 Wochen · Band = dein Normalbereich, gestrichelt = dein Ø</span></div>
+          <div className="tiles">{tiles.map((t) => (
+            <Link key={t.k} href={`${base}/entwicklung`} className={`tile ${t.tone}`}>
+              <span className="tl">{t.label}{t.stale && <small className="note"> · {t.day.slice(8, 10)}.{t.day.slice(5, 7)}.</small>}</span>
+              <b>{t.cur}<small className="note"> {t.unit}</small></b>
+              <Spark pts={t.pts} m={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.m} s={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.s} tone={t.tone} />
+              {t.text && <small className={`tt ${t.tone}`}>{t.text}</small>}
+            </Link>
+          ))}</div>
+        </section>
+      )}
+
+      {ws && (
+        <section className="panel">
+          <div className="panel-head"><h2>Diese Woche</h2><span className="note">{Math.round(ws.doneMin / 6) / 10} von {Math.round(ws.plannedMin / 6) / 10} h · Schlüsseleinheiten {ws.keyDone}/{ws.key.length}</span><Link className="note" href={`${base}/ziele#plan`}>Plan anpassen →</Link></div>
+          <div className="pbar"><i style={{ width: `${ws.plannedMin ? Math.min(100, (ws.doneMin / ws.plannedMin) * 100) : 0}%` }} /></div>
+          <div className="wk">{ws.days.map((d) => (
+            <div key={d.day} className={`wkd s-${d.status}${d.isToday ? " today" : ""}`}>
+              <span className="note">{WD[new Date(d.day + "T12:00:00Z").getUTCDay()]} {d.day.slice(8, 10)}.</span>
+              <b>{d.title}</b>
+              <span className="note">{d.planned ? `${d.planned} min geplant` : "frei"}</span>
+              <span className={`wks`}>{{ erledigt: "✓ erledigt", teilweise: "~ teilweise", verpasst: "– verpasst", zusätzlich: "+ zusätzlich", ruhe: "Ruhe", offen: d.isToday ? "heute" : "offen" }[d.status]}{d.doneMin ? ` · ${d.doneMin} min` : ""}</span>
+              {d.acts.length > 0 && <small className="note">{d.acts.join(", ")}</small>}
+            </div>
+          ))}</div>
         </section>
       )}
 
