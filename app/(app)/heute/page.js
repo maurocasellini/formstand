@@ -7,6 +7,7 @@ import { addManual, deleteManual, loadDemo, createAdvice, saveCheckin, rateSessi
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
 import { getTodayAdvice, todayModel } from "@/lib/coach";
+import { ACT_LABEL } from "@/lib/adherence";
 import ActionForm from "@/components/ActionForm";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
@@ -77,7 +78,7 @@ function Decision({ d, a }) {
 
 export default async function Heute() {
   const { subject, viewer } = await viewerAndSubject();
-  const { today, all, activities, providers, st, cx: ctxv, decision, triggers } = await todayModel(subject.id);
+  const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday } = await todayModel(subject.id);
   const days = all.slice(-42);
   const T = days[days.length - 1], Y = days[days.length - 2];
   const ck = T?.checkin || null;
@@ -103,6 +104,7 @@ export default async function Heute() {
         <div style={{ display: "grid", gap: 4 }}>
           <span className="note">{new Date(today + "T12:00:00Z").toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
           <h1>Hallo, {subject.name.split(" ")[0]}</h1>
+          {phase && <Link href="/ziele" className="phaseline"><span className="tag on">{phase.label}</span>{phase.event && phase.daysTo > 0 ? <span>noch <b>{phase.daysTo} Tage</b> bis {phase.event.name}</span> : null}</Link>}
         </div>
         <div className="btnrow">
           {conns.map((c) => <span key={c.provider} className="tag on">{PNAME[c.provider] || c.provider}</span>)}
@@ -163,6 +165,17 @@ export default async function Heute() {
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
       </section>
+
+      {yesterday && (
+        <section className={`panel yday y-${yesterday.status}`}>
+          <span className="note">Gestern</span>
+          <span>Empfohlen: <b>{yesterday.rec.title}</b></span>
+          <span>Gemacht: <b>{ACT_LABEL[yesterday.act.kind]}</b>{yesterday.act.min ? ` · ${yesterday.act.min} min` : ""}</span>
+          <span className={`tag ${{ gefolgt: "on", teilweise: "wait", anders: "err", ausgelassen: "" }[yesterday.status]}`}>{{ gefolgt: "✓ gefolgt", teilweise: "~ teilweise", anders: "↑ härter als empfohlen", ausgelassen: "– ausgelassen" }[yesterday.status]}</span>
+          {yesterday.scoreThen != null && yesterday.scoreNow != null && <span className="note">Tagesform {yesterday.scoreThen} → {yesterday.scoreNow} ({yesterday.scoreNow - yesterday.scoreThen >= 0 ? "+" : ""}{yesterday.scoreNow - yesterday.scoreThen})</span>}
+          <Link href="/ziele" className="note">Verlauf →</Link>
+        </section>
+      )}
 
       {unrated.length > 0 && !viewer.demo && (
         <section className="panel">

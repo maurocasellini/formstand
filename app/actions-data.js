@@ -14,6 +14,7 @@ import { aiReady } from "@/lib/ai";
 import { applyInBody } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
+import { WEAKNESSES, EVENT_TYPES, FOCUS } from "@/lib/catalog";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -223,4 +224,39 @@ export async function testPush() {
   if (demo) return DEMO;
   const n = await sendTo(viewer.id, { title: "Formstand", body: "So sieht die Morgen-Erinnerung aus.", url: "/heute#checkin", tag: "test" });
   return n ? { ok: "Testnachricht gesendet." } : { error: "Kein aktives Gerät gefunden." };
+}
+
+// ---------- Ziele, Schwächen, Wettkämpfe ----------
+export async function saveGoals(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const weak = form.getAll("weak").map(String).filter((w) => WEAKNESSES[w]).slice(0, 4);
+  const main = WEAKNESSES[String(form.get("mainWeakness"))] ? String(form.get("mainWeakness")) : weak[0] || null;
+  await repo.updateGoals(subject.id, (g) => ({
+    ...g, focus: FOCUS[String(form.get("focus"))] ? String(form.get("focus")) : g.focus,
+    weaknesses: weak.filter((w) => w !== main), mainWeakness: main,
+    daysPerWeek: scale(form.get("daysPerWeek"), 2, 7) ?? g.daysPerWeek, hoursPerWeek: Math.max(2, Math.min(25, numOf(form.get("hoursPerWeek")) ?? g.hoursPerWeek)),
+    longDay: scale(form.get("longDay"), 0, 6) ?? g.longDay, note: String(form.get("note") || "").slice(0, 500), updated_at: new Date().toISOString(),
+  }));
+  revalidatePath("/", "layout");
+  return { ok: "Gespeichert. Plan und Tagesentscheidung sind angepasst." };
+}
+export async function addEvent(_prev, form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const name = String(form.get("name") || "").trim().slice(0, 80), date = String(form.get("date") || "");
+  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Name und Datum angeben." };
+  if (date < todayIso()) return { error: "Das Datum liegt in der Vergangenheit." };
+  const type = EVENT_TYPES[String(form.get("type"))] ? String(form.get("type")) : "sonst";
+  const priority = ["A", "B", "C"].includes(String(form.get("priority"))) ? String(form.get("priority")) : "B";
+  await repo.updateGoals(subject.id, (g) => ({ ...g, events: [...(g.events || []), { id: crypto.randomUUID(), name, date, type, priority, target: String(form.get("target") || "").slice(0, 120) || null }].sort((a, b) => (a.date < b.date ? -1 : 1)), updated_at: new Date().toISOString() }));
+  revalidatePath("/", "layout");
+  return { ok: `${name} eingetragen.` };
+}
+export async function deleteEvent(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const id = String(form.get("id"));
+  await repo.updateGoals(subject.id, (g) => ({ ...g, events: (g.events || []).filter((e) => e.id !== id) }));
+  revalidatePath("/", "layout");
 }
