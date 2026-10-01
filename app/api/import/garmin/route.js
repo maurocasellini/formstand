@@ -13,6 +13,7 @@ export const maxDuration = 60;
 export async function POST(req) {
   const viewer = await currentUser();
   if (!viewer) return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  if (viewer.demo) return NextResponse.json({ error: "In der Demo nicht möglich." }, { status: 403 });
   const subject = await resolveSubject(viewer, (await cookies()).get("fs_subject")?.value);
   const body = await req.json().catch(() => null);
   if (!body || typeof body.file !== "string" || !Array.isArray(body.records)) return NextResponse.json({ error: "Ungültige Daten" }, { status: 400 });

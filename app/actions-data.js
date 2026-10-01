@@ -15,13 +15,15 @@ import { makeAdvice } from "@/lib/coach";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
-  return { viewer, subject };
+  return { viewer, subject, demo: viewer.demo };
 }
+const DEMO = { error: "In der Demo kann man nur schauen. Mit eigenem Konto geht alles." };
 const dayOf = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : todayIso());
 const numOf = (v) => { if (v == null || v === "") return null; const n = Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
 
 export async function addManual(_prev, form) {
-  const { viewer, subject } = await ctx();
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
   const kind = String(form.get("kind"));
   const day = dayOf(form.get("day"));
   const value = numOf(form.get("value"));
@@ -38,48 +40,56 @@ export async function addManual(_prev, form) {
 }
 
 export async function deleteManual(form) {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await repo.deleteManual(subject.id, String(form.get("id")));
   revalidatePath("/", "layout");
 }
 
 export async function updateProfile(_prev, form) {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await repo.updateUser(subject.id, { sport: String(form.get("sport") || "").slice(0, 40) || null, weight_kg: numOf(form.get("weight_kg")), birth_year: numOf(form.get("birth_year")) });
   revalidatePath("/", "layout");
   return { ok: "Profil gespeichert." };
 }
 
 export async function loadDemo() {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await seedDemo(subject.id, Number(subject.weight_kg) || 80);
   revalidatePath("/", "layout");
 }
 export async function removeDemo() {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await clearDemo(subject.id);
   revalidatePath("/", "layout");
 }
 
 export async function syncNow() {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   const r = await syncUser(subject.id);
   revalidatePath("/", "layout");
   return r;
 }
 export async function fullResync() {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await syncUser(subject.id, { full: true });
   revalidatePath("/", "layout");
 }
 export async function disconnect(form) {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   await repo.removeConnection(subject.id, String(form.get("provider")));
   revalidatePath("/quellen");
 }
 
 export async function connectIntervals(_prev, form) {
-  const { viewer, subject } = await ctx();
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
   if (viewer.id !== subject.id) return { error: "Verbinden kann nur die Person selbst." };
   const key = String(form.get("key") || "").trim();
   const athlete = String(form.get("athlete") || "").trim() || "0";
@@ -94,7 +104,8 @@ export async function connectIntervals(_prev, form) {
 
 const KINDS = ["body_photo", "meal", "inbody", "blood", "other"];
 export async function uploadMedia(_prev, form) {
-  const { viewer, subject } = await ctx();
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return { error: "Dateispeicher ist nicht verbunden." };
   const files = form.getAll("file").filter((f) => f && typeof f === "object" && f.size > 0);
   if (!files.length) return { error: "Bitte eine Datei wählen." };
@@ -122,7 +133,8 @@ export async function uploadMedia(_prev, form) {
 
 // InBody-Datei (nochmals) auslesen, z. B. wenn sie vor der KI-Freischaltung hochgeladen wurde.
 export async function rereadInBody(_prev, form) {
-  const { viewer, subject } = await ctx();
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
   if (!(await aiReady())) return { error: "KI ist nicht freigeschaltet (Admin → Schnittstellen)." };
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
   if (!m) return { error: "Datei nicht gefunden." };
@@ -142,14 +154,16 @@ export async function rereadInBody(_prev, form) {
 
 // KI-Tagesempfehlung erstellen
 export async function createAdvice() {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   try { await makeAdvice(subject.id); } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
   revalidatePath("/heute");
   return { ok: "Empfehlung erstellt." };
 }
 
 export async function deleteMedia(form) {
-  const { subject } = await ctx();
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
   const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
   if (m) { try { await del(m.pathname); } catch {} await repo.deleteMediaEntry(subject.id, m.id); await repo.deleteManualBySource(subject.id, m.id); }
   revalidatePath("/", "layout");

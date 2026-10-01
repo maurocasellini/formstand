@@ -1,7 +1,10 @@
 "use server";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repo";
+import crypto from "node:crypto";
 import { createSession, destroySession, requireUser } from "@/lib/auth";
+import { seedDemo, demoAdvice } from "@/lib/demo";
+import { buildSeries, todayIso } from "@/lib/metrics";
 
 export async function login(_prev, form) {
   const u = await repo.findUserByLogin(form.get("login"));
@@ -28,8 +31,11 @@ export async function register(_prev, form) {
   redirect("/quellen?ok=" + encodeURIComponent("Willkommen! Verbinde jetzt deine Apps."));
 }
 
+const DEMO = { error: "Im Demo-Konto nicht möglich." };
+
 export async function changePassword(_prev, form) {
   const me = await requireUser();
+  if (me.demo) return DEMO;
   const full = await repo.getUser(me.id);
   const cur = String(form.get("current") || ""), pw = String(form.get("password") || ""), pw2 = String(form.get("password2") || "");
   if (!(await repo.checkPassword(cur, full.password_hash))) return { error: "Das aktuelle Passwort stimmt nicht." };
@@ -42,6 +48,7 @@ export async function changePassword(_prev, form) {
 
 export async function updateAccount(_prev, form) {
   const me = await requireUser();
+  if (me.demo) return DEMO;
   const name = String(form.get("name") || "").trim();
   const email = String(form.get("email") || "").trim().toLowerCase() || null;
   if (!name) return { error: "Name darf nicht leer sein." };
@@ -54,4 +61,28 @@ export async function updateAccount(_prev, form) {
 export async function logout() {
   await destroySession();
   redirect("/login");
+}
+
+// Demo: gemeinsames Konto mit Beispieldaten, nur zum Anschauen. Daten werden täglich frisch erzeugt.
+export async function startDemo() {
+  let u = (await repo.listUsers()).find((x) => x.demo);
+  if (!u) {
+    try { u = await repo.createUser({ username: "demo-konto", name: "Alex Demo", password: crypto.randomBytes(24).toString("hex"), role: "athlete", sport: "Rad & Laufen" }); }
+    catch { u = await repo.findUserByLogin("demo-konto"); }
+    u = await repo.updateUser(u.id, { demo: true, weight_kg: 76, birth_year: 1990 });
+  }
+  const today = todayIso();
+  if (u.demo_day !== today) {
+    await seedDemo(u.id, 76, { rich: true });
+    const { days } = await buildSeries(u.id, today, today);
+    await repo.saveAdvice(u.id, today, demoAdvice(today, days[days.length - 1]?.score ?? null));
+    u = await repo.updateUser(u.id, { demo_day: today });
+  }
+  await createSession(u);
+  redirect("/heute");
+}
+
+export async function leaveDemo() {
+  await destroySession();
+  redirect("/register");
 }

@@ -12,7 +12,8 @@ const when = (d) => (d ? new Date(d).toLocaleString("de-CH", { dateStyle: "short
 
 export default async function Quellen({ searchParams }) {
   const sp = await searchParams;
-  const { subject, own } = await viewerAndSubject();
+  const { subject, viewer, own: isOwn } = await viewerAndSubject();
+  const own = isOwn && !viewer.demo;
   const conns = await repo.getConnections(subject.id);
   const [acts, daily] = await Promise.all([repo.getActivities(subject.id), repo.getDaily(subject.id)]);
   const demo = { n: acts.filter((a) => a.is_demo).length + daily.filter((d) => d.is_demo).length };
@@ -23,6 +24,7 @@ export default async function Quellen({ searchParams }) {
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Quellen</h1><p>Hier verbindest du deine eigenen Konten. Danach läuft alles automatisch: täglicher Abgleich um 06:15, Strava zusätzlich sofort bei jedem neuen Workout.</p></div>
         <SyncButton action={syncNow} /></div>
+      {viewer.demo && <div className="notice warn">In der Demo stammen die Daten von Beispiel-Geräten (Garmin, WHOOP, Strava). Mit eigenem Konto verbindest du hier deine echten Apps.</div>}
       {sp?.ok && <div className="notice good">{sp.ok}</div>}
       {sp?.error && <div className="notice crit">{sp.error}</div>}
       <section className="cards">
@@ -46,8 +48,8 @@ export default async function Quellen({ searchParams }) {
               )}
               {!c && ready && own && !p.apiKey && <a className="btn" href={`/api/connect/${p.id}`}>Mit {p.name} verbinden</a>}
               {!c && p.apiKey && <p className="note">{p.setup}</p>}
-              {!c && ready && !own && <p>Verbinden kann nur die Person selbst.</p>}
-              {c && <form action={disconnect}><input type="hidden" name="provider" value={p.id} /><button className="btn danger sm" type="submit">Trennen</button></form>}
+              {!c && ready && !own && !viewer.demo && <p>Verbinden kann nur die Person selbst.</p>}
+              {c && !viewer.demo && <form action={disconnect}><input type="hidden" name="provider" value={p.id} /><button className="btn danger sm" type="submit">Trennen</button></form>}
               {!ready && p.oauth && <p className="note">Noch nicht freigeschaltet. {p.setup}</p>}
               {!ready && !p.oauth && !p.apiKey && <p className="note">{p.setup}</p>}
             </div>

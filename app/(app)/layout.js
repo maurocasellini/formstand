@@ -3,7 +3,7 @@ import Nav from "@/components/Nav";
 import Logo from "@/components/Logo";
 import SubjectPicker from "@/components/SubjectPicker";
 import { viewerAndSubject } from "@/lib/subject";
-import { logout } from "../actions-auth";
+import { logout, leaveDemo } from "../actions-auth";
 import { switchSubject } from "../actions-subject";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ export default async function AppLayout({ children }) {
         </div>
       </header>
       <main className="wrap">
+        {viewer.demo && <div className="notice good demo-bar"><span><b>Demo-Modus.</b> Alles sind Beispieldaten. Klick dich frei durch, ändern lässt sich hier nichts.</span><form action={leaveDemo}><button className="btn sm" type="submit">Eigenes Konto anlegen</button></form></div>}
         {viewer.must_change && <div className="notice warn">Du nutzt noch das Startpasswort. <Link href="/konto">Jetzt ändern</Link></div>}
         {subject.id !== viewer.id && <div className="notice warn">Du siehst die Daten von <b>{subject.name}</b>.</div>}
         {children}

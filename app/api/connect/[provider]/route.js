@@ -13,6 +13,7 @@ export async function GET(_req, { params }) {
   const user = await currentUser();
   const base = await baseUrl();
   if (!user) return NextResponse.redirect(`${base}/login`);
+  if (user.demo) return NextResponse.redirect(`${base}/quellen?error=${encodeURIComponent("In der Demo sind keine Verbindungen möglich.")}`);
   const p = OAUTH[provider], c = await appCreds(provider);
   if (!p || !c.clientId || !c.clientSecret) return NextResponse.redirect(`${base}/quellen?error=${encodeURIComponent(`${provider} ist noch nicht freigeschaltet (Admin → Schnittstellen)`)}`);
   const state = randomState();

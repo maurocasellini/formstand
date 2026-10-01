@@ -57,13 +57,13 @@ function Advice({ a }) {
       </dl>
       {a.watch?.length > 0 && <ul className="adv-watch">{a.watch.map((w, i) => <li key={i}>{w}</li>)}</ul>}
       {a.why?.length > 0 && <details><summary>Warum?</summary><ul>{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul></details>}
-      <p className="note">Erstellt um {t} aus deinen Daten. Ersetzt keine ärztliche Beratung.</p>
+      <p className="note">{a.model === "Beispiel" ? "Beispiel-Empfehlung. Mit eigenem Konto schreibt die KI sie jeden Morgen aus deinen Daten." : `Erstellt um ${t} aus deinen Daten. Ersetzt keine ärztliche Beratung.`}</p>
     </div>
   );
 }
 
 export default async function Heute() {
-  const { subject } = await viewerAndSubject();
+  const { subject, viewer } = await viewerAndSubject();
   const today = todayIso();
   const { days, activities, providers, zones } = await buildSeries(subject.id, addDays(today, -41), today);
   const T = days[days.length - 1], Y = days[days.length - 2];
@@ -128,7 +128,7 @@ export default async function Heute() {
         <div className="panel">
           <div className="panel-head"><h2>Empfehlung für heute</h2><span className={`tag ${advice ? "on" : ""}`}>{advice ? "KI-Coach" : "Regelbasiert"}</span></div>
           {advice ? <Advice a={advice} /> : <div className="coach">{recommend(T, zones, subject.sport)}</div>}
-          {ai && hasAny ? (
+          {viewer.demo ? null : ai && hasAny ? (
             <ActionForm action={createAdvice} className="btnrow" submit={advice ? "Neu erstellen" : "KI-Empfehlung erstellen"} busy="Analysiert deine Daten…" reset={false} />
           ) : !ai ? <p className="note">Die KI-Empfehlung wird aktiv, sobald ein Admin Claude unter Admin → Schnittstellen freischaltet.</p> : null}
         </div>
