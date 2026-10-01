@@ -13,6 +13,7 @@ import Targets from "@/components/Targets";
 import TargetForm from "@/components/TargetForm";
 import { FitnessWork } from "@/components/FitnessProfile";
 import { fitnessProfile } from "@/lib/fitness";
+import { vo2Summary } from "@/lib/vo2";
 import { targetsOf, currentValues, TARGET_METRICS } from "@/lib/targets";
 import { TEST_TYPES, testText } from "@/lib/catalog";
 import EventFinder from "@/components/EventFinder";
@@ -55,7 +56,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
   const tg = targetsOf(goals, manual, all, today);
   const tMetrics = Object.fromEntries(Object.entries(TARGET_METRICS).map(([k, x]) => [k, { name: x.name, unit: x.unit, group: x.group, time: Boolean(x.time), step: x.step || 1 }]));
   const kgNow = Number(m.user?.weight_kg) || null;
-  const fp = fitnessProfile(manual, { sex: subject.sex, kg: kgNow, goals, profile: subject, today });
+  const fp = fitnessProfile(manual, { sex: subject.sex, kg: kgNow, goals, profile: subject, today, vo2: vo2Summary(all, manual, subject, today) });
   // Test-Verlauf je Schwäche (z. B. Kraft Beine → Kniebeuge 1RM vorher/nachher)
   const testFor = (w) => { const x = fp.tests.filter((t) => t.area === w && t.prev); return x.length ? x.map((t) => `${t.name}: ${t.prev.text} → ${t.text}`).join(" · ") : null; };
   const iv = intensityVerdict(intensityDist(all), intensityTarget({ goals, phase: m.hasGoals ? phase : null, weak }));

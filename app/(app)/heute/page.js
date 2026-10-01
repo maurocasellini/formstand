@@ -18,6 +18,7 @@ import ActionForm from "@/components/ActionForm";
 import Targets from "@/components/Targets";
 import Spark from "@/components/Spark";
 import { trendTiles, findings, weekStatus } from "@/lib/overview";
+import { vo2Summary } from "@/lib/vo2";
 import { targetsOf } from "@/lib/targets";
 
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
@@ -148,7 +149,7 @@ export default async function Heute({ demo } = {}) {
   const { subject, viewer, base } = await pageContext(demo);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = await todayModel(subject.id);
   const tg = targetsOf(goals, manual, all, today);
-  const tiles = trendTiles(all);
+  const tiles = trendTiles(all, vo2Summary(all, manual, subject, today));
   const fnd = findings(all, { activities, st, goals, triggers });
   const ws = hasGoals ? weekStatus(week, all, activities, today) : null;
   const days = all.slice(-42);
@@ -247,7 +248,7 @@ export default async function Heute({ demo } = {}) {
         <section className="panel">
           <div className="panel-head"><h2>Trends</h2><span className="note">letzte 4 Wochen · Band = dein Normalbereich, gestrichelt = dein Ø</span></div>
           <div className="tiles">{tiles.map((t) => (
-            <Link key={t.k} href={`${base}/entwicklung`} className={`tile ${t.tone}`}>
+            <Link key={t.k} href={t.k === "vo2max" ? `${base}/tests#vo2` : `${base}/entwicklung`} className={`tile ${t.tone}`}>
               <span className="tl">{t.label}{t.stale && <small className="note"> · {t.day.slice(8, 10)}.{t.day.slice(5, 7)}.</small>}</span>
               <b>{t.cur}<small className="note"> {t.unit}</small></b>
               <Spark pts={t.pts} m={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.m} s={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.s} tone={t.tone} />

@@ -6,6 +6,8 @@ import { TEST_TYPES, TEST_GROUPS, TEST_DURATIONS, testText, TRIGGERS, triggerNam
 import TestForm from "@/components/TestForm";
 import FitnessProfile from "@/components/FitnessProfile";
 import { fitnessProfile } from "@/lib/fitness";
+import { vo2Summary } from "@/lib/vo2";
+import Vo2Card from "@/components/Vo2Card";
 import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia, adoptWeaknesses } from "../../actions-data";
 import FilePick from "@/components/FilePick";
 import { aiReady } from "@/lib/ai";
@@ -34,21 +36,20 @@ export default async function Tests({ demo } = {}) {
   const kg = (wLast ? Number(wLast.value) : Number(subject.weight_kg)) || null;
   const goals = await repo.getGoals(subject.id);
   const goalsWeak = [goals.mainWeakness, ...(goals.weaknesses || [])].filter(Boolean);
-  const fp = fitnessProfile(allMan, { sex: subject.sex, kg, goals, profile: subject, today });
+  const { all, activities } = await buildSeries(subject.id, addDays(today, -400), today);
+  const vo2 = vo2Summary(all, allMan, subject, today);
+  const fp = fitnessProfile(allMan, { sex: subject.sex, kg, goals, profile: subject, today, vo2 });
   // Für den Client nur, was das Formular braucht
   const formTypes = Object.fromEntries(Object.entries(TEST_TYPES).map(([k, t]) => [k, { group: t.group, fmt: t.fmt, dur: Boolean(t.dur), name: t.name, label: t.label, desc: t.desc, unit: t.unit, dist: t.dist || null, per: t.per || null }]));
   const own = (await repo.getActivities(subject.id)).filter((a) => a.provider === "manual").sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
 
   // Persönliche Trigger-Auswertung (12 Monate)
-  const { all, activities } = await buildSeries(subject.id, addDays(today, -364), today);
-  const trig = analyzeTriggers(all, activities);
-  const pairs = analyzePairs(all, activities).filter((p) => p.stronger || p.weaker);
 
   return (
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Tests</h1><p>Ausdauer-Diagnostik, Maximalkraft, Lauf & Rudern, Grundlagenfitness – eintragen oder hochladen. Daraus rechnet Formstand Zonen, Arbeitsgewichte, dein Fitness-Profil und den Fortschritt deiner Ziele.</p></div></div>
 
-      <nav className="subnav" aria-label="Abschnitte"><a href="#test">Eintragen</a><a href="#zonen">Zonen</a><a href="#fitness">Fitness-Profil</a><a href="#wirkung">Wofür Tests?</a><a href="#verlauf">Alle Tests</a></nav>
+      <nav className="subnav" aria-label="Abschnitte"><a href="#test">Eintragen</a><a href="#zonen">Zonen</a><a href="#vo2">VO2max</a><a href="#fitness">Fitness-Profil</a><a href="#wirkung">Wofür Tests?</a><a href="#verlauf">Alle Tests</a></nav>
 
       <section className="grid2e">
         <div className="panel">
@@ -88,6 +89,11 @@ export default async function Tests({ demo } = {}) {
             return <p key={n} className="note srcline"><b>{n} {Number(t.value)} {u}</b> · {tt.name} · Verlässlichkeit {old ? "gesunken (alt)" : tt.conf || "mittel"} · {age} Tage alt{old ? " – neuer Test empfohlen" : ` · nächster Test fällig ${fmt(addDays(t.day, 7 * (tt.wks || 8)))}`}</p>;
           })}
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2 id="vo2">VO2max</h2><span className="note">deine maximale Sauerstoffaufnahme – der wichtigste Einzelwert für Ausdauer und Gesundheit</span></div>
+        {vo2 ? <Vo2Card v={vo2} /> : <div className="empty">Noch keine VO2max-Werte. Garmin schätzt sie aus Läufen und Rad mit Wattmesser und schickt sie über intervals.icu (Wellness-Daten erlauben). Oder oben einen VO2max-Wert aus Labor oder Uhr als Test eintragen.</div>}
       </section>
 
       <section className="panel">
