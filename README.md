@@ -6,7 +6,8 @@ Trainings-Cockpit: Recovery, Workouts, Ernährung, Körper und Trigger aus allen
 - Next.js 15 (App Router) auf Vercel
 - Postgres (Neon via Vercel Storage), Schema legt die App beim ersten Start selbst an (`lib/db.js`)
 - Vercel Blob (privat) für Fotos und PDFs
-- Strava (OAuth + Webhook), WHOOP (OAuth v2); Garmin nach Freigabe des Developer Program
+- Garmin automatisch über intervals.icu (persönlicher API-Schlüssel), komplette Historie über den Garmin-Datenexport (ZIP, im Browser entpackt)
+- Strava (OAuth + Webhook), WHOOP (OAuth v2)
 
 ## Datenablage
 | Tabelle | Inhalt |
