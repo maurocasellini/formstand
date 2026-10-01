@@ -6,8 +6,8 @@ const LINKS = [
   ["/eingaben#training", "Training nachtragen", "Einheit ohne Uhr erfassen"],
   ["/ziele#plan", "Wochenplan", "Was diese Woche ansteht"],
   ["/ziele#wettkampf", "Wettkämpfe & Ziele", "Rennen, Schwächen, Zeitbudget"],
-  ["/bilder?art=body_photo#hochladen", "Fotos hochladen", "Körperfotos und Vergleich"],
-  ["/bilder?art=inbody#hochladen", "InBody hochladen", "Blatt fotografieren, KI liest es"],
+  ["/bilder#hinzufuegen", "Foto / InBody hochladen", "Formstand erkennt selbst, was es ist"],
+  ["/bilder#verlauf", "Körperentwicklung", "InBody, Fotos, Vorher/Nachher"],
   ["/eingaben#gewicht", "Messungen", "Gewicht, Körperfett, Tests, Trigger"],
   ["/entwicklung", "Entwicklung", "Was sich verändert hat"],
 ];

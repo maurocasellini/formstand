@@ -59,7 +59,7 @@ export default async function Eingaben({ demo } = {}) {
             <label className="f">Datum<DateField name="day" defaultValue={today} max={today} /></label>
             <label className="f">Körperfett %<input type="number" name="value" step="0.1" min="3" max="60" required /></label>
           </ActionForm>
-          <p className="note">InBody-Blatt lieber unter „Bilder &amp; Dokumente“ hochladen, damit das Original erhalten bleibt.</p>
+          <p className="note">InBody-Auswertung lieber unter „Körper“ hochladen – die Werte werden ausgelesen und das Original bleibt erhalten.</p>
         </div>
         <div className="panel">
           <h2 id="trigger">Trigger</h2>

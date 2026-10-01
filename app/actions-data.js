@@ -11,11 +11,11 @@ import { weekPlan, mondayOf } from "@/lib/plan";
 import { todayIso } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
-import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent } from "@/lib/ai";
-import { applyInBody } from "@/lib/inbody";
+import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload } from "@/lib/ai";
+import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
 import { makeAdvice } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
-import { WEAKNESSES, EVENT_TYPES, FOCUS } from "@/lib/catalog";
+import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS } from "@/lib/catalog";
 
 async function ctx() {
   const { viewer, subject } = await viewerAndSubject();
@@ -113,27 +113,54 @@ export async function uploadMedia(_prev, form) {
   if (!filesReady) return { error: "Dateispeicher ist nicht verbunden." };
   const files = form.getAll("file").filter((f) => f && typeof f === "object" && f.size > 0);
   if (!files.length) return { error: "Bitte eine Datei wählen." };
-  const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "other";
+  const chosen = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "auto";
   const day = dayOf(form.get("day"));
   const note = String(form.get("note") || "").slice(0, 200);
-  const ai = kind === "inbody" && (await aiReady());
-  const notes = [];
+  const ai = await aiReady();
+  const notes = [], found = {};
   for (const f of files.slice(0, 6)) {
     if (f.size > 4 * 1024 * 1024) return { error: `${f.name} ist grösser als 4 MB.` };
     if (!/^(image\/|application\/pdf)/.test(f.type)) return { error: `${f.name}: nur Bilder oder PDF.` };
+    const buf = Buffer.from(await f.arrayBuffer());
+    // Art: gewählt oder automatisch erkannt (KI), sonst Bild = Körperfoto, PDF = Dokument
+    let kind = chosen, pose = ["front", "side", "back"].includes(String(form.get("pose"))) ? String(form.get("pose")) : null;
+    if (kind === "auto") {
+      kind = f.type === "application/pdf" ? "other" : "body_photo";
+      if (ai && AI_IMAGE_TYPES.includes(f.type)) { try { const c = await classifyUpload(buf, f.type, subject.id); kind = c.art; pose = pose || c.pose; } catch {} }
+    }
+    if (kind !== "body_photo") pose = null;
+    found[kind] = (found[kind] || 0) + 1;
     const ext = (f.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
     const path = `files/${subject.id}/${kind}/${day}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-    const buf = Buffer.from(await f.arrayBuffer());
     const b = await putFile(path, buf, f.type);
-    const pose = kind === "body_photo" && ["front", "side", "back"].includes(String(form.get("pose"))) ? String(form.get("pose")) : null;
     const m = await repo.addMedia(subject.id, { kind, day, pathname: b.pathname, content_type: f.type, size_bytes: f.size, note: note || null, pose });
-    if (ai) {
-      try { const r = await applyInBody(subject.id, m, buf, viewer.id); notes.push(`${Object.keys(r.values).length} Werte ausgelesen (Messung vom ${r.day.split("-").reverse().join(".")})`); }
+    if (kind === "inbody" && ai) {
+      try { const r = await applyInBody(subject.id, m, buf, viewer.id); notes.push(`${Object.keys(r.values).length} InBody-Werte ausgelesen (Messung vom ${r.day.split("-").reverse().join(".")})`); }
       catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); notes.push(`Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 160)}`); }
     }
   }
   revalidatePath("/", "layout");
-  return { ok: `${files.length} Datei${files.length > 1 ? "en" : ""} gespeichert.${notes.length ? " " + notes.join(" · ") + "." : ""}` };
+  const what = Object.entries(found).map(([k, n]) => `${n}× ${MEDIA_KINDS[k]}`).join(", ");
+  return { ok: `Gespeichert: ${what}.${notes.length ? " " + notes.join(" · ") + "." : ""}${chosen === "auto" ? " Falsch erkannt? Bei der Datei die Art ändern." : ""}` };
+}
+
+// Art oder Pose einer Datei korrigieren; wird sie zum InBody-Blatt, liest Formstand die Werte aus
+export async function changeMedia(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const m = (await repo.getMedia(subject.id)).find((x) => x.id === String(form.get("id")));
+  if (!m) return { error: "Datei nicht gefunden." };
+  const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : m.kind;
+  const pose = kind === "body_photo" && ["front", "side", "back"].includes(String(form.get("pose"))) ? String(form.get("pose")) : null;
+  await repo.updateMedia(subject.id, m.id, { kind, pose });
+  let msg = "Geändert.";
+  if (m.kind === "inbody" && kind !== "inbody") await repo.deleteManualBySource(subject.id, m.id);
+  if (kind === "inbody" && m.kind !== "inbody" && (await aiReady())) {
+    try { const buf = await readFile(m.pathname); const r = await applyInBody(subject.id, { ...m, kind }, buf, viewer.id); msg = `Geändert – ${Object.keys(r.values).length} InBody-Werte ausgelesen.`; }
+    catch (e) { await repo.updateMedia(subject.id, m.id, { extract_error: String(e.message || e).slice(0, 200) }); msg = `Geändert, aber Auslesen fehlgeschlagen: ${String(e.message || e).slice(0, 140)}`; }
+  }
+  revalidatePath("/", "layout");
+  return { ok: msg };
 }
 
 // InBody-Datei (nochmals) auslesen, z. B. wenn sie vor der KI-Freischaltung hochgeladen wurde.

@@ -466,3 +466,33 @@ h2[id]{scroll-margin-top:150px}
 @media (max-width:820px){.glance{grid-template-columns:1fr}.gl-v{font-size:28px}}
 .theme-t.icon{width:34px;padding:0;justify-content:center}
 .theme-t{gap:6px}
+/* Körper: Unternavigation und gemeinsames Raster */
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subnav a{font-size:13px;font-weight:700;text-decoration:none;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+.subnav a:hover{border-color:var(--accent);color:var(--accent-ink)}
+.fwide{flex-basis:100%}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.kcard{display:grid;gap:10px;align-content:start;padding:14px;border-radius:16px;background:var(--sunk);border:1px solid var(--line);min-width:0}
+.kcard header{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.kcard header b{font-size:15px;margin-right:auto}
+.kph{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.kph figure{margin:0;display:grid;gap:3px;min-width:0}
+.kph img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;display:block;background:var(--line)}
+.kph figcaption{font-size:11px;color:var(--muted);text-align:center}
+.kvals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0}
+.kvals div{background:var(--surface);border-radius:10px;padding:6px 8px;min-width:0}
+.kvals dt{font-size:11px;color:var(--muted)}
+.kvals dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}
+.kvals small{font-weight:500;color:var(--muted)}
+.ksheet{display:grid;gap:4px}
+.ftools summary{cursor:pointer;font-size:11px;color:var(--muted)}
+.ftools[open]{grid-column:1/-1;background:var(--surface);border-radius:10px;padding:8px}
+.ftools .form{margin-top:6px}
+@media (max-width:560px){.kvals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){
+  .bar-top{flex-wrap:nowrap}
+  .who{flex-wrap:nowrap;gap:6px}
+  .who .uname,.who .role,.who a[href="/anleitung"]{display:none}
+  .who select{max-width:120px}
+  .bar-top > .logo b{display:none}
+}

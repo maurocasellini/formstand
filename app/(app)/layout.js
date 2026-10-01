@@ -24,7 +24,7 @@ export default async function AppLayout({ children }) {
             <div className="who">
               {athletes.length > 0 && <SubjectPicker athletes={athletes} current={subject.id} viewerId={viewer.id} action={switchSubject} />}
               <Link href="/konto" className="logo" style={{ gap: 8 }} title="Mein Konto"><span className="ava">{initials}</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span></Link>
+              <span className="uname" style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span></Link>
               <span className="role">{ROLE[viewer.role]}</span>
               <ThemeToggle />
               <Link className="btn ghost sm" href="/anleitung" title="Schritt-für-Schritt-Anleitung">Anleitung</Link>

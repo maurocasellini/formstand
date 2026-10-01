@@ -134,7 +134,7 @@ export default async function Anleitung() {
           <ul>
             <li><b>Eingaben → Leistungstest:</b> FTP (z. B. Zwift Ramp Test), Schwellenpuls (Garmin-Laktatschwelle), CSS fürs Schwimmen. Damit bekommst du Watt-, Puls- und Pace-Vorgaben.</li>
             <li><b>Eingaben:</b> Gewicht, Profil (Sportart, Jahrgang).</li>
-            <li><b>Bilder & Dokumente:</b> InBody-Blatt als PDF oder Foto hochladen – die Werte werden automatisch ausgelesen. Körperfotos mit Pose alle 2–4 Wochen für den Vorher/Nachher-Vergleich.</li>
+            <li><b>Körper:</b> InBody-Auswertung (PDF oder Foto vom Ausdruck) und Körperfotos im selben Feld hochladen – Formstand erkennt selbst, was es ist, liest die InBody-Werte aus und ordnet Fotos nach Pose. Unter „Körperentwicklung“ stehen Messwerte und Fotos pro Datum nebeneinander, dazu der Vorher/Nachher-Vergleich. Körperfotos alle 2–4 Wochen.</li>
           </ul>
         </Step>
 
