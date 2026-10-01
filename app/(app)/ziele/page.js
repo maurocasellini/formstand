@@ -12,6 +12,7 @@ import { saveGoals, addEvent, deleteEvent, savePlanDay, deleteFixed, findEvent }
 import EventFinder from "@/components/EventFinder";
 import DayEditor from "@/components/DayEditor";
 import { aiReady } from "@/lib/ai";
+import { intensityDist, intensityTarget, intensityVerdict } from "@/lib/intensity";
 import ActionForm from "@/components/ActionForm";
 
 export const maxDuration = 60;
@@ -45,6 +46,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
   const weak = [goals.mainWeakness, ...(goals.weaknesses || [])].filter(Boolean);
   const nextA = (goals.events || []).find((e) => e.priority === "A" && e.date >= today);
   const ro = viewer.demo;
+  const iv = intensityVerdict(intensityDist(all), intensityTarget({ goals, phase: m.hasGoals ? phase : null, weak }));
 
   // Fortschritt je Schwäche: absolvierte Fokus-Einheiten + passende Kennzahl
   const metricFor = (w) => {
@@ -164,6 +166,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
               {p.off.length > 0 && <p className="note">Härter als empfohlen: {p.off.map((o) => `${short(o.day)} (${o.rec} → ${o.did})`).join(", ")}</p>}
             </div>
           ))}
+          <div className="rv"><b>Intensität 4 Wochen</b><p className="note">{iv.lines[0]} <Link href={`${base}/entwicklung`}>Details</Link></p></div>
           <div className="rv"><b>Diese Woche</b><p className="note">{plan.phase.label} · {plan.hours} h geplant · {plan.items.filter((x) => x.type === "quality").map((x) => x.title).join(", ") || "keine harten Einheiten"}{plan.items.some((x) => x.type === "race") ? ` · Wettkampf: ${plan.items.find((x) => x.type === "race").title.replace("Wettkampf: ", "")}` : ""}</p></div>
         </div>
         {showBody ? (

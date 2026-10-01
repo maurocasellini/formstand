@@ -524,3 +524,10 @@ details.more-data>section,details.more-data>.panel{box-shadow:none}
 .ld.hi{background:var(--warn-soft);color:var(--warn-ink)}.ld.lo{background:var(--accent-soft);color:var(--accent-ink)}
 .insc .v.sm{font-size:14px;color:var(--muted)}
 .learnl{margin:0;padding-left:18px;display:grid;gap:8px}
+/* Intensitätsverteilung */
+.idist{display:grid;gap:8px}
+.irow{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
+.ibar{display:flex;height:26px;border-radius:8px;overflow:hidden;background:var(--sunk)}
+.ibar i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:700;color:#fff;min-width:0;white-space:nowrap;overflow:hidden}
+.z-low{background:#5B8DEF}.z-mid{background:#E0A23A}.z-high{background:#DC4545}
+.idist .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}

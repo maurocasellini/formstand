@@ -6,6 +6,8 @@ import { changes } from "@/lib/insights";
 import { review, summarize } from "@/lib/adherence";
 import { triggerLine, analyzePairs, pairLine } from "@/lib/triggers";
 import { learnedText } from "@/lib/learn";
+import { intensityDist, intensityTarget, intensityVerdict } from "@/lib/intensity";
+import { loadSplit } from "@/lib/loadsplit";
 import * as repo from "@/lib/repo";
 
 export const maxDuration = 60;
@@ -23,6 +25,10 @@ export default async function Entwicklung({ demo } = {}) {
   const byKey = Object.fromEntries(ch.map((c) => [c.key, c]));
   const head = ORDER.map((k) => byKey[k]).filter(Boolean);
   const pairs = analyzePairs(m.all, m.activities).filter((p) => p.stronger).slice(0, 2);
+  const dist = intensityDist(m.all);
+  const weakAll = [m.goals.mainWeakness, ...(m.goals.weaknesses || [])].filter(Boolean);
+  const target = intensityTarget({ goals: m.goals, phase: m.hasGoals ? m.phase : null, weak: weakAll, loadRatio: loadSplit(m.all)?.cardio.ratio ?? null });
+  const verdict = intensityVerdict(dist, target);
   const sum = summarize(review(m.all, { ...m.ctx, goals: m.hasGoals ? m.goals : null }, 28));
   const trig = m.triggers.filter((t) => t.level === "ziemlich sicher" || t.level === "Tendenz").slice(0, 3).map(triggerLine).filter(Boolean);
 
@@ -48,6 +54,20 @@ export default async function Entwicklung({ demo } = {}) {
             </div>
           ))}</div>
         ) : <div className="empty">Für Trends braucht es gut 4 Monate Daten.</div>}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Intensitätsverteilung · 4 Wochen</h2><span className="note">{dist.hours} h Ausdauer · Soll aus {target.why.join(", ")}{target.daysTo > 0 ? ` · noch ${target.daysTo} Tage` : ""}</span></div>
+        <div className="idist">
+          {[["Ist", { low: [dist.low, dist.low], mid: [dist.mid, dist.mid], high: [dist.high, dist.high] }, true], ["Soll", target, false]].map(([n, t, ist]) => (
+            <div key={n} className="irow"><span className="note">{n}</span>
+              <div className="ibar">{["low", "mid", "high"].map((k) => { const w = ist ? t[k][0] : (t[k][0] + t[k][1]) / 2; return <i key={k} className={`z-${k}`} style={{ width: `${w}%` }} title={`${{ low: "locker", mid: "mittel", high: "hart" }[k]} ${ist ? `${t[k][0]} %` : `${t[k][0]}–${t[k][1]} %`}`}>{w >= 8 ? (ist ? `${t[k][0]} %` : `${t[k][0]}–${t[k][1]}`) : ""}</i>; })}</div>
+            </div>
+          ))}
+          <div className="legend"><span><i className="z-low" />locker (unter LT1)</span><span><i className="z-mid" />mittel (Tempo/Schwelle)</span><span><i className="z-high" />hart (über Schwelle)</span></div>
+        </div>
+        <ul className="learnl">{verdict.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+        {verdict.approx && <p className="note">Ein Teil der Einheiten ist nur grob aus dem Durchschnittspuls eingeordnet. Genauer wird es mit den Zonenzeiten von intervals.icu (Quellen → 12 Monate neu laden).</p>}
       </section>
 
       <section className="panel">
