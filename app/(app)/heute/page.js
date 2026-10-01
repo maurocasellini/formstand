@@ -206,6 +206,12 @@ export default async function Heute({ demo } = {}) {
         </div>
       </div>
 
+      {hasAny && (
+        <nav className="subnav jump" aria-label="Auf dieser Seite">
+          <a href="#drauf">Heute</a><a href="#rueckblick">Rückblick</a><a href="#auffaellig">Was auffällt</a>{!viewer.demo && <a href="#coach">Wochenbrief</a>}<a href="#trends">Trends</a>{ws && <a href="#woche">Woche</a>}{tg.length > 0 && <a href="#ziele">Ziele</a>}<a href="#faktoren">Einflussfaktoren</a>
+        </nav>
+      )}
+
       {!hasAny && (
         <div className="panel">
           <h2>Noch keine Daten</h2>
@@ -227,7 +233,7 @@ export default async function Heute({ demo } = {}) {
       {hasAny && (
         <section className="home2">
           <div className="panel status">
-            <div className="panel-head"><h2>Wie bin ich drauf?</h2><span className="note">{recP.length ? `aus ${recP.map((p) => PNAME[p] || p).join(" + ")}` : ""}{ck ? " · mit Check-in" : ""}</span></div>
+            <div className="panel-head"><h2 id="drauf">Wie bin ich drauf?</h2><span className="note">{recP.length ? `aus ${recP.map((p) => PNAME[p] || p).join(" + ")}` : ""}{ck ? " · mit Check-in" : ""}</span></div>
             <Status T={T} st={st} cx={ctxv} ls={loadSplit(all)} />
             {st && (
             <div className="why">
@@ -254,7 +260,7 @@ export default async function Heute({ demo } = {}) {
 
       {hasAny && fbs.length > 0 && (
         <section className="panel">
-          <div className="panel-head"><h2>Rückblick & Feedback</h2><span className="note">Woche, Monat und Gesamtbild – jeweils gegen den Zeitraum davor</span></div>
+          <div className="panel-head"><h2 id="rueckblick">Rückblick & Feedback</h2><span className="note">Woche, Monat und Gesamtbild – jeweils gegen den Zeitraum davor</span></div>
           <Tabs labels={fbs.map((f) => f.label)} start={fbStart}>
             {fbs.map((f) => <Feedback key={f.key} f={f} ai={aiFor(f)} aiOn={ai} ro={Boolean(viewer.demo)} action={createFeedback} />)}
           </Tabs>
@@ -263,7 +269,7 @@ export default async function Heute({ demo } = {}) {
 
       {hasAny && fnd.length > 0 && (
         <section className="panel">
-          <div className="panel-head"><h2>Was auffällt</h2><span className="note">automatisch erkannt aus deinen Daten · wichtigstes zuerst</span></div>
+          <div className="panel-head"><h2 id="auffaellig">Was auffällt</h2><span className="note">automatisch erkannt aus deinen Daten · wichtigstes zuerst</span></div>
           <div className="finds">{fnd.slice(0, 6).map((f) => (
             <div key={f.title} className={`find ${f.tone}`}><b>{f.title}</b><p>{f.text}</p></div>
           ))}</div>
@@ -272,14 +278,14 @@ export default async function Heute({ demo } = {}) {
 
       {hasAny && !viewer.demo && (
         <section className="panel">
-          <div className="panel-head"><h2>Dein Coach · Wochenbrief</h2><span className="note">alles zusammen, in Worten – jeden Montag neu</span></div>
+          <div className="panel-head"><h2 id="coach">Dein Coach · Wochenbrief</h2><span className="note">alles zusammen, in Worten – jeden Montag neu</span></div>
           <Brief b={brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} />
         </section>
       )}
 
       {hasAny && tiles.length > 0 && (
         <section className="panel">
-          <div className="panel-head"><h2>Trends</h2><span className="note">letzte 4 Wochen · Band = dein Normalbereich, gestrichelt = dein Ø</span></div>
+          <div className="panel-head"><h2 id="trends">Trends</h2><span className="note">letzte 4 Wochen · Band = dein Normalbereich, gestrichelt = dein Ø</span></div>
           <div className="tiles">{tiles.map((t) => (
             <Link key={t.k} href={t.k === "vo2max" ? `${base}/tests#vo2` : `${base}/entwicklung`} className={`tile ${t.tone}`}>
               <span className="tl">{t.label}{t.stale && <small className="note"> · {t.day.slice(8, 10)}.{t.day.slice(5, 7)}.</small>}</span>
@@ -293,7 +299,7 @@ export default async function Heute({ demo } = {}) {
 
       {ws && (
         <section className="panel">
-          <div className="panel-head"><h2>Diese Woche</h2><span className="note">{Math.round(ws.doneMin / 6) / 10} von {Math.round(ws.plannedMin / 6) / 10} h · Schlüsseleinheiten {ws.keyDone}/{ws.key.length}</span><Link className="note" href={`${base}/ziele#plan`}>Plan anpassen →</Link></div>
+          <div className="panel-head"><h2 id="woche">Diese Woche</h2><span className="note">{Math.round(ws.doneMin / 6) / 10} von {Math.round(ws.plannedMin / 6) / 10} h · Schlüsseleinheiten {ws.keyDone}/{ws.key.length}</span><Link className="note" href={`${base}/ziele#plan`}>Plan anpassen →</Link></div>
           <div className="pbar"><i style={{ width: `${ws.plannedMin ? Math.min(100, (ws.doneMin / ws.plannedMin) * 100) : 0}%` }} /></div>
           <div className="wk">{ws.days.map((d) => (
             <div key={d.day} className={`wkd s-${d.status}${d.isToday ? " today" : ""}`}>
@@ -309,7 +315,7 @@ export default async function Heute({ demo } = {}) {
 
       {tg.length > 0 ? (
         <section className="panel">
-          <div className="panel-head"><h2>Deine Ziele · auf Kurs?</h2><span className="note">{tg.filter((t) => t.tone === "good").length} von {tg.filter((t) => !t.free).length} im Plan</span></div>
+          <div className="panel-head"><h2 id="ziele">Deine Ziele · auf Kurs?</h2><span className="note">{(() => { const m = tg.filter((t) => !t.free && t.cur != null); return m.length ? `${m.filter((t) => t.tone === "good").length} von ${m.length} auf Kurs` : "neu gesetzt – Stand nach der nächsten Messung"; })()}</span></div>
           <Targets list={tg} compact base={base} />
         </section>
       ) : hasAny && !viewer.demo && (
@@ -349,11 +355,12 @@ export default async function Heute({ demo } = {}) {
         </section>
       )}
 
-      <section className="panel">
-        <div className="panel-head"><h2>Einflussfaktoren</h2><Link className="note" href={`${base}/tagebuch#trigger`}>Mehrere Tage nachtragen →</Link></div>
+      <details className="panel more-data" id="faktoren" open={todayTrig.length > 0 || undefined}>
+        <summary><h2>Einflussfaktoren</h2><span className="note">{todayTrig.length ? `heute: ${todayTrig.map((t) => (t.data?.t === "alkohol" ? `Alkohol ${t.value} Gl.` : triggerName(t.data?.t))).join(", ")}` : "Alkohol, Stress, spätes Essen … für heute eintragen"}</span></summary>
+        <Link className="note" href={`${base}/tagebuch#trigger`}>Mehrere Tage nachtragen →</Link>
         <EveningForm entries={eveningMap(manual, addDays(today, -60))} today={today} action={saveEvening} factors={TRIGGERS.filter(([k]) => k !== "alkohol")} />
         {todayTrig.length > 0 && <p className="note">{todayTrig.map((t) => { const r = triggers.find((x) => x.k === t.data?.t); return r && r.metrics.hrv?.diff != null && r.level !== "zu wenig Daten" && r.level !== "kein klarer Effekt" ? `Deine Reaktion nach ${triggerName(t.data?.t)}: HRV ${r.metrics.hrv.diff > 0 ? "+" : "−"}${Math.abs(Math.round(r.metrics.hrv.diff))} %${r.recovery != null ? `, normal nach Ø ${r.recovery.toFixed(1)} Tagen` : ""}. ` : ""; }).join("")}</p>}
-      </section>
+      </details>
 
       {!viewer.demo && subject.id === viewer.id && (() => {
         const steps = [
