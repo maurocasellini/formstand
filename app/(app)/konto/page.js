@@ -8,7 +8,8 @@ import { savePushSub, deletePushSub, testPush } from "../../actions-data";
 export default async function Konto({ searchParams }) {
   const sp = await searchParams;
   const me = await requireUser();
-  const pub = me.demo ? null : (await vapid()).publicKey;
+  let pub = null, pushError = null;
+  if (!me.demo) { try { pub = (await vapid()).publicKey; } catch (e) { console.error("vapid", e); pushError = e.message; } }
   return (
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Mein Konto</h1><p>Benutzername: <b>{me.username}</b></p></div></div>
@@ -35,7 +36,7 @@ export default async function Konto({ searchParams }) {
         <section className="panel">
           <h2>Morgen-Erinnerung</h2>
           <p className="muted">Jeden Morgen um ca. 07:00 eine Nachricht mit deiner Tagesform und dem Check-in (4 Fragen, 5 Sekunden). Pro Gerät einschalten, z. B. auf dem Handy.</p>
-          <PushToggle publicKey={pub} save={savePushSub} remove={deletePushSub} test={testPush} />
+          {pub ? <PushToggle publicKey={pub} save={savePushSub} remove={deletePushSub} test={testPush} /> : <p className="notice warn">Erinnerungen sind gerade nicht verfügbar ({pushError}).</p>}
         </section>
       )}
     </>
