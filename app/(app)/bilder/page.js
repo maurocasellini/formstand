@@ -1,5 +1,5 @@
 import { viewerAndSubject } from "@/lib/subject";
-import { q } from "@/lib/db";
+import * as repo from "@/lib/repo";
 import { todayIso } from "@/lib/metrics";
 import { MEDIA_KINDS } from "@/lib/catalog";
 import { uploadMedia, deleteMedia } from "../../actions-data";
@@ -9,7 +9,7 @@ const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 
 export default async function Bilder() {
   const { subject } = await viewerAndSubject();
-  const media = await q(`select id, kind, day::text as day, content_type, size_bytes, note from media where user_id=$1 order by day desc, created_at desc`, [subject.id]);
+  const media = (await repo.getMedia(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
   const blobOk = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
   const groups = Object.keys(MEDIA_KINDS).map((k) => [k, media.filter((m) => m.kind === k)]).filter(([, l]) => l.length);
   return (
@@ -22,7 +22,7 @@ export default async function Bilder() {
           <label className="f">Art<select name="kind" defaultValue="body_photo">{Object.entries(MEDIA_KINDS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>
           <label className="f">Datum<input type="date" name="day" defaultValue={todayIso()} /></label>
           <label className="f">Notiz<input type="text" name="note" maxLength={200} placeholder="z. B. Front, nüchtern" /></label>
-          <label className="f">Dateien (Bild oder PDF, max. 10 MB)<input type="file" name="file" accept="image/*,application/pdf" multiple required /></label>
+          <label className="f">Dateien (Bild oder PDF, max. 4 MB)<input type="file" name="file" accept="image/*,application/pdf" multiple required /></label>
         </ActionForm>
         <p className="note">Für Körperfotos: gleiche Pose, Licht und Abstand, alle 4 Wochen. Werte aus InBody-PDFs automatisch auslesen folgt im nächsten Schritt.</p>
       </section>

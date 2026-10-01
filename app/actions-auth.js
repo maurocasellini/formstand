@@ -1,29 +1,54 @@
 "use server";
 import { redirect } from "next/navigation";
-import { q, one } from "@/lib/db";
-import { hashPassword, checkPassword, createSession, destroySession } from "@/lib/auth";
+import * as repo from "@/lib/repo";
+import { createSession, destroySession, requireUser } from "@/lib/auth";
 
 export async function login(_prev, form) {
-  const email = String(form.get("email") || "").trim().toLowerCase();
-  const pw = String(form.get("password") || "");
-  const u = await one("select id, password_hash from users where email=$1", [email]);
-  if (!u || !(await checkPassword(pw, u.password_hash))) return { error: "E-Mail oder Passwort stimmt nicht." };
-  await createSession(u.id);
-  redirect("/heute");
+  const u = await repo.findUserByLogin(form.get("login"));
+  if (!u || !(await repo.checkPassword(form.get("password"), u.password_hash))) return { error: "Benutzername oder Passwort stimmt nicht." };
+  await createSession(u);
+  redirect(u.must_change ? "/konto?neu=1" : "/heute");
 }
 
-// Erstes Konto = Admin. Danach legt nur der Admin Konten an.
-export async function setupAdmin(_prev, form) {
-  const c = await one("select count(*)::int as n from users");
-  if (c.n > 0) return { error: "Es gibt bereits ein Admin-Konto. Bitte anmelden." };
+const NAME_OK = /^[A-Za-z0-9._-]{3,40}$/;
+export async function register(_prev, form) {
+  const s = await repo.getSettings();
+  if (!s.registrationOpen) return { error: "Die Registrierung ist geschlossen. Bitte beim Admin melden." };
+  const username = String(form.get("username") || "").trim();
   const name = String(form.get("name") || "").trim();
-  const email = String(form.get("email") || "").trim().toLowerCase();
+  const email = String(form.get("email") || "").trim().toLowerCase() || null;
   const pw = String(form.get("password") || "");
-  if (!name || !email.includes("@")) return { error: "Name und gültige E-Mail angeben." };
-  if (pw.length < 10) return { error: "Passwort mit mindestens 10 Zeichen wählen." };
-  const u = await one("insert into users (email, name, password_hash, role) values ($1,$2,$3,'admin') returning id", [email, name, await hashPassword(pw)]);
-  await createSession(u.id);
-  redirect("/heute");
+  if (!NAME_OK.test(username)) return { error: "Benutzername: 3–40 Zeichen, nur Buchstaben, Zahlen, Punkt, Strich." };
+  if (!name) return { error: "Bitte deinen Namen angeben." };
+  if (email && !email.includes("@")) return { error: "E-Mail sieht nicht gültig aus." };
+  if (pw.length < 8) return { error: "Passwort mit mindestens 8 Zeichen wählen." };
+  let u;
+  try { u = await repo.createUser({ username, name, email, password: pw, role: "athlete" }); } catch (e) { return { error: e.message }; }
+  await createSession(u);
+  redirect("/quellen?ok=" + encodeURIComponent("Willkommen! Verbinde jetzt deine Apps."));
+}
+
+export async function changePassword(_prev, form) {
+  const me = await requireUser();
+  const full = await repo.getUser(me.id);
+  const cur = String(form.get("current") || ""), pw = String(form.get("password") || ""), pw2 = String(form.get("password2") || "");
+  if (!(await repo.checkPassword(cur, full.password_hash))) return { error: "Das aktuelle Passwort stimmt nicht." };
+  if (pw.length < 8) return { error: "Neues Passwort mit mindestens 8 Zeichen." };
+  if (pw !== pw2) return { error: "Die beiden neuen Passwörter sind nicht gleich." };
+  const u = await repo.setPassword(me.id, pw);
+  await createSession(u);
+  return { ok: "Passwort geändert." };
+}
+
+export async function updateAccount(_prev, form) {
+  const me = await requireUser();
+  const name = String(form.get("name") || "").trim();
+  const email = String(form.get("email") || "").trim().toLowerCase() || null;
+  if (!name) return { error: "Name darf nicht leer sein." };
+  const others = (await repo.listUsers()).filter((u) => u.id !== me.id);
+  if (email && others.some((u) => u.email && u.email.toLowerCase() === email)) return { error: "Diese E-Mail nutzt schon jemand." };
+  await repo.updateUser(me.id, { name, email });
+  return { ok: "Gespeichert." };
 }
 
 export async function logout() {

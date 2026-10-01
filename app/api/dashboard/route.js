@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { currentUser, resolveSubject } from "@/lib/auth";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
-import { q } from "@/lib/db";
+import * as repo from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +27,9 @@ export async function GET(req) {
     sleepScore: d.sleepScore, bbHigh: d.bbHigh, stress: d.stress, vo2max: d.vo2max, readiness: d.readiness, spo2: d.spo2, deep: d.deep, rem: d.rem,
     alc: (d.night || []).filter((t) => t.t === "alkohol").reduce((s, t) => s + (t.n || 1), 0),
   }));
-  const [origin] = await q(
-    `select (select count(*) from raw_events where user_id=$1 and fetched_at::date between $2 and $3)::int as api,
-            (select count(*) from activities where user_id=$1 and day between $2 and $3)::int as acts,
-            (select count(*) from daily_metrics where user_id=$1 and day between $2 and $3)::int as daily,
-            (select count(*) from manual_entries where user_id=$1 and day between $2 and $3)::int as manual,
-            (select count(*) from media where user_id=$1 and day between $2 and $3)::int as media`, [subject.id, from, to]);
-  const tests = await q(`select day::text as day, value, data->>'test' as test from manual_entries where user_id=$1 and kind='test' order by day`, [subject.id]);
+  const inR = (d) => d >= from && d <= to;
+  const [acts, daily, man, media] = await Promise.all([repo.getActivities(subject.id), repo.getDaily(subject.id), repo.getManual(subject.id), repo.getMedia(subject.id)]);
+  const origin = { acts: acts.filter((a) => inR(a.day)).length, daily: daily.filter((d) => inR(d.day)).length, manual: man.filter((m) => inR(m.day)).length, media: media.filter((m) => inR(m.day)).length };
+  const tests = man.filter((m) => m.kind === "test").sort((a, b) => (a.day < b.day ? -1 : 1)).map((m) => ({ day: m.day, value: m.value, test: m.data?.test }));
   return NextResponse.json({ from, to, today, prevFrom, days: slim, origin, zones, tests });
 }

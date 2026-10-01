@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
-import { after } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { OAUTH } from "@/lib/providers";
+import { appCreds } from "@/lib/apps";
 import { encrypt } from "@/lib/crypto";
-import { q, one } from "@/lib/db";
+import * as repo from "@/lib/repo";
 import { syncConnection } from "@/lib/sync";
 import { baseUrl } from "@/lib/baseurl";
 
@@ -26,14 +26,12 @@ export async function GET(req, { params }) {
   const p = OAUTH[provider];
   if (!p) return back("Unbekannte Quelle");
   try {
-    const t = await p.exchange(u.searchParams.get("code"), `${base}/api/oauth/${provider}`);
-    await q(`insert into connections (user_id, provider, external_id, access_token, refresh_token, expires_at, scope, status)
-             values ($1,$2,$3,$4,$5,$6,$7,'active')
-             on conflict (user_id, provider) do update set external_id=excluded.external_id, access_token=excluded.access_token,
-               refresh_token=excluded.refresh_token, expires_at=excluded.expires_at, scope=excluded.scope, status='active', last_error=null`,
-      [user.id, provider, t.external_id || null, encrypt(t.access_token), encrypt(t.refresh_token), t.expires_at, t.scope || null]);
-    const conn = await one("select * from connections where user_id=$1 and provider=$2", [user.id, provider]);
-    after(() => syncConnection(conn, { full: true }));
+    const t = await p.exchange(u.searchParams.get("code"), `${base}/api/oauth/${provider}`, await appCreds(provider));
+    const conn = await repo.saveConnection(user.id, provider, {
+      external_id: t.external_id || null, access_token: encrypt(t.access_token), refresh_token: encrypt(t.refresh_token),
+      expires_at: new Date(t.expires_at).toISOString(), scope: t.scope || null, status: "active", last_error: null,
+    });
+    after(() => syncConnection({ ...conn, user_id: user.id }, { full: true }));
     return back(`${p.name} verbunden. Die letzten 12 Monate werden im Hintergrund geladen.`, true);
   } catch (e) {
     return back(String(e.message || e));

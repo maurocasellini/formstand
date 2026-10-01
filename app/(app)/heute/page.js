@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { viewerAndSubject } from "@/lib/subject";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
-import { q } from "@/lib/db";
+import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName } from "@/lib/catalog";
 import { addManual, deleteManual, loadDemo } from "../../actions-data";
 import ActionForm from "@/components/ActionForm";
@@ -47,8 +47,8 @@ export default async function Heute() {
   const today = todayIso();
   const { days, activities, providers, zones } = await buildSeries(subject.id, addDays(today, -41), today);
   const T = days[days.length - 1], Y = days[days.length - 2];
-  const conns = await q("select provider from connections where user_id=$1", [subject.id]);
-  const todayTrig = await q("select id, value, data from manual_entries where user_id=$1 and kind='trigger' and day=$2 order by id", [subject.id, today]);
+  const conns = await repo.getConnections(subject.id);
+  const todayTrig = (await repo.getManual(subject.id)).filter((e) => e.kind === "trigger" && e.day === today);
   const hasAny = activities.length || providers.length;
   const recP = Object.keys(T?.prov || {});
   const labels = { hrv: "HRV", rhr: "Ruhepuls", sleep: "Schlaf", tsb: "Trainingsbalance" };

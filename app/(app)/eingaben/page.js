@@ -1,5 +1,5 @@
 import { viewerAndSubject } from "@/lib/subject";
-import { q } from "@/lib/db";
+import * as repo from "@/lib/repo";
 import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 import { TEST_TYPES, TRIGGERS, triggerName, POWER_ZONES, HR_ZONES, SPORTS } from "@/lib/catalog";
 import { addManual, deleteManual, updateProfile } from "../../actions-data";
@@ -12,8 +12,9 @@ const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 export default async function Eingaben() {
   const { subject } = await viewerAndSubject();
   const today = todayIso();
-  const entries = await q(`select id, day::text as day, kind, value, data, is_demo from manual_entries where user_id=$1 order by day desc, id desc limit 60`, [subject.id]);
-  const tests = await q(`select day::text as day, value, data from manual_entries where user_id=$1 and kind='test' order by day desc`, [subject.id]);
+  const allMan = (await repo.getManual(subject.id)).sort((a, b) => (a.day === b.day ? (a.created_at < b.created_at ? 1 : -1) : a.day < b.day ? 1 : -1));
+  const entries = allMan.slice(0, 60);
+  const tests = allMan.filter((e) => e.kind === "test");
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr);
   const kg = Number(subject.weight_kg) || null;
 

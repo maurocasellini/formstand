@@ -21,8 +21,8 @@ export default async function AppLayout({ children }) {
             <Link href="/heute" className="logo"><Logo /><b>Formstand</b></Link>
             <div className="who">
               {athletes.length > 0 && <SubjectPicker athletes={athletes} current={subject.id} viewerId={viewer.id} action={switchSubject} />}
-              <span className="ava" title={viewer.email}>{initials}</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span>
+              <Link href="/konto" className="logo" style={{ gap: 8 }} title="Mein Konto"><span className="ava">{initials}</span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{viewer.name}</span></Link>
               <span className="role">{ROLE[viewer.role]}</span>
               <form action={logout}><button className="btn ghost sm" type="submit">Abmelden</button></form>
             </div>
@@ -31,6 +31,7 @@ export default async function AppLayout({ children }) {
         </div>
       </header>
       <main className="wrap">
+        {viewer.must_change && <div className="notice warn">Du nutzt noch das Startpasswort. <Link href="/konto">Jetzt ändern</Link></div>}
         {subject.id !== viewer.id && <div className="notice warn">Du siehst die Daten von <b>{subject.name}</b>.</div>}
         {children}
       </main>
