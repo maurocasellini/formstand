@@ -310,7 +310,7 @@ export default async function Heute({ demo } = {}) {
       {hasAny && Object.keys(td).length > 0 && (
         <section className="panel">
           <div className="panel-head"><h2 id="trends">Trends</h2><span className="note">kräftige Linie = 7-Tage-Schnitt · Punkte = Tageswerte · Band = dein Normalbereich · antippen für Details</span></div>
-          <TrendsPanel td={td} ai={viewer.demo ? DEMO_TRENDS : brief?.trends} />
+          <TrendsPanel td={td} ai={viewer.demo ? DEMO_TRENDS : brief?.trends} prof={{ age: subject.birth_year ? Number(today.slice(0, 4)) - Number(subject.birth_year) : null, sex: subject.sex === "w" ? "w" : "m", heightCm: subject.height_cm || null }} />
         </section>
       )}
 

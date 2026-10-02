@@ -15,13 +15,15 @@ export default function Feedback({ f, ai, aiOn, ro, action }) {
     ["Ø Ruhepuls", k.rhr != null ? `${Math.round(k.rhr)} bpm` : "–", vs(k.rhr, k.rhrPrev, 1)],
     ["Ø Schlaf", k.sleep != null ? `${k.sleep} h` : "–", k.sleep != null && k.sleepPrev != null ? `${sg((k.sleep - k.sleepPrev) * 60)} min zu vorher` : null],
     ["Fitness (CTL)", k.ctl ?? "–", k.ctlDelta != null ? `${sg(k.ctlDelta)} im Zeitraum` : null],
-    ["Alkohol", `${k.alc} Abende`, k.alcPrev != null ? `vorher ${k.alcPrev}` : null],
-  ];
-  if (k.weightDelta != null) kpis.push(["Gewicht", `${sg(k.weightDelta, 1)} kg`, "im Zeitraum"]);
+    (k.alc > 0 || k.alcPrev > 0) && ["Alkohol", `${k.alc} Abende`, k.alcPrev != null ? `vorher ${k.alcPrev}` : null],
+    k.weightDelta != null && ["Gewicht", `${sg(k.weightDelta, 1)} kg`, "im Zeitraum"],
+  ].filter(Boolean)
+    // ohne Daten: ausblenden – Schlaf bleibt sichtbar, aber ausgegraut
+    .filter(([l, v]) => v !== "–" || l === "Ø Schlaf");
   return (
     <div className="fb">
       <div className={`fb-head ${f.tone}`}><b>{f.headline}</b><span className="note">{fmtD(f.from)}–{fmtD(f.to)}{f.running ? " · Zwischenstand" : ""}</span></div>
-      <div className="fb-kpis">{kpis.map(([l, v, d, x]) => <div key={l}><span>{l}</span><b>{v}</b>{d && <small>{d}</small>}{x && <small>{x}</small>}</div>)}</div>
+      <div className="fb-kpis">{kpis.map(([l, v, d, x]) => v === "–" ? <div key={l} className="nodata"><span>{l}</span><b>keine Daten</b><small>Uhr nachts tragen</small></div> : <div key={l}><span>{l}</span><b>{v}</b>{d && <small>{d}</small>}{x && <small>{x}</small>}</div>)}</div>
       <div className="fb-cols">
         <div className="ba-list good"><span className="lbl">Das lief gut</span>{f.good.length ? <ul>{f.good.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="note">Noch nichts Auffälliges.</p>}</div>
         <div className="ba-list warn"><span className="lbl">Daran arbeiten</span>{f.work.length ? <ul>{f.work.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="note">Nichts Dringendes.</p>}</div>

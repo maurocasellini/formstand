@@ -799,3 +799,18 @@ main h2[id],main details[id]{scroll-margin-top:120px}
   .tchart text{font-size:21px}
   .tchart text.dl{display:none}
 }
+/* Einordnung in den Trend-Kacheln */
+.fb-kpis>div.nodata{opacity:.55}.fb-kpis>div.nodata b{font-size:15px;color:var(--muted)}
+.tr-card{position:relative}
+.tr-card.top{background:linear-gradient(160deg,var(--good-soft),var(--sunk) 55%);box-shadow:inset 0 0 0 2px var(--good)}
+.tr-ribbon{position:absolute;top:-9px;left:14px;background:var(--good);color:#fff;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 10px}
+.rt{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--surface)}
+.rt-h{display:flex;gap:8px;align-items:baseline}
+.rt-h b{font-size:16px;text-transform:capitalize}
+.rt-top .rt-h b,.rt-good .rt-h b{color:var(--good-ink)}.rt-warn .rt-h b{color:var(--warn-ink)}.rt-crit .rt-h b{color:var(--crit-ink)}
+.rt p{margin:0;font-size:13px;line-height:1.45}
+.rt-scale{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;font-size:10px;color:var(--muted);text-align:center;padding-top:12px}
+.rt-scale span{padding-top:3px;border-top:6px solid var(--line2);line-height:1.2}
+.rt-scale .z0{border-color:var(--crit)}.rt-scale .z1{border-color:var(--warn)}.rt-scale .z2{border-color:var(--line2)}.rt-scale .z3{border-color:#4fc59d}.rt-scale .z4{border-color:var(--good)}
+.rt-scale .zn{border-color:var(--line2)}
+.rt-scale i{position:absolute;top:5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--fg);border:3px solid var(--surface)}
