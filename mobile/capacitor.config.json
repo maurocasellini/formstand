@@ -1,0 +1,14 @@
+{
+  "appId": "app.formstand.ios",
+  "appName": "Formstand",
+  "webDir": "www",
+  "server": {
+    "url": "https://formstand.vercel.app/heute",
+    "allowNavigation": ["formstand.vercel.app"]
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "scheme": "Formstand",
+    "backgroundColor": "#0B1020"
+  }
+}
