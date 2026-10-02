@@ -862,3 +862,6 @@ main h2[id],main details[id]{scroll-margin-top:120px}
 .notes{display:grid;gap:6px;margin:0;padding:0;list-style:none}
 .notes li{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:8px 10px;border-radius:10px;background:var(--sunk);font-size:13px}
 .notes li small{color:var(--muted);display:block}
+.mic.on{background:var(--crit-soft);color:var(--crit-ink);animation:micpulse 1.2s ease-in-out infinite}
+@keyframes micpulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.mic.on{animation:none}}

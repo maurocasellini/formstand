@@ -21,6 +21,7 @@ import DayEditor from "@/components/DayEditor";
 import { aiReady } from "@/lib/ai";
 import { intensityDist, intensityTarget, intensityVerdict } from "@/lib/intensity";
 import ActionForm from "@/components/ActionForm";
+import Dictate from "@/components/Dictate";
 
 export const maxDuration = 60;
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
@@ -170,7 +171,7 @@ export default async function Ziele({ searchParams, demo } = {}) {
               <label className="f">Tempo (Abnehmen)<select name="rate" defaultValue={goals.rate}><option value="0.25">sanft · 0,25 %/Woche</option><option value="0.5">normal · 0,5 %/Woche</option><option value="0.75">zügig · 0,75 %/Woche</option><option value="1">maximal · 1 %/Woche</option></select></label>
             </div>
             <label className="f">Schwimmeinheiten pro Woche (Triathlon)<select name="swimsPerWeek" defaultValue={goals.swimsPerWeek ?? ""}><option value="">automatisch nach Phase</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-            <label className="f">Was dir sonst wichtig ist (liest die KI mit)<textarea name="note" rows={2} maxLength={500} defaultValue={goals.note || ""} placeholder="z. B. am Berg verliere ich immer den Anschluss; Knie links empfindlich" /></label>
+            <label className="f">Was dir sonst wichtig ist (liest die KI mit) <Dictate target="goalnote" /><textarea id="goalnote" name="note" rows={2} maxLength={500} defaultValue={goals.note || ""} placeholder="z. B. am Berg verliere ich immer den Anschluss; Knie links empfindlich" /></label>
           </ActionForm>
         </div>
       </section>
