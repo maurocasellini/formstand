@@ -19,6 +19,7 @@ import { makeAdvice, makeFeedback, makeBrief } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
 import { TARGET_METRICS, seriesOf, ambition, goalEffects } from "@/lib/targets";
 import { SYMPTOMS } from "@/lib/cycle";
+import { parseNutritionCsv } from "@/lib/nutrition";
 import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES, TEST_RANGE, TEST_DURATIONS, testText } from "@/lib/catalog";
 
 async function ctx() {
@@ -59,6 +60,23 @@ export async function addManual(_prev, form) {
   if (kind === "weight") await repo.updateUser(subject.id, { weight_kg: value });
   revalidatePath("/", "layout");
   return { ok: "Gespeichert." };
+}
+
+// ---------- Ernährung: MyFitnessPal / Cronometer (CSV) ----------
+export async function importNutrition(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const f = form.get("file");
+  if (!f || typeof f !== "object" || !f.size) return { error: "Bitte die CSV-Datei wählen." };
+  if (f.size > 8 * 1024 * 1024) return { error: "Datei grösser als 8 MB." };
+  let days;
+  try { days = parseNutritionCsv(await f.text()); } catch (e) { return { error: String(e.message || e) }; }
+  const src = /cronometer/i.test(f.name) ? "Cronometer" : "MyFitnessPal";
+  const set = new Set(days.map((d) => d.day));
+  await repo.deleteManualWhere(subject.id, (e) => e.kind === "food" && set.has(e.day));
+  await repo.addManualMany(subject.id, days.map((d) => ({ day: d.day, kind: "food", value: d.kcal, data: { kcal: d.kcal, carbs_g: d.carbs_g, protein_g: d.protein_g, fat_g: d.fat_g, meals: d.meals, src }, created_by: viewer.id })));
+  revalidatePath("/", "layout");
+  return { ok: `${days.length} Tage übernommen (${days[0].day.split("-").reverse().join(".")} – ${days.at(-1).day.split("-").reverse().join(".")}), Ø ${Math.round(days.reduce((s, d) => s + d.kcal, 0) / days.length).toLocaleString("de-CH")} kcal.` };
 }
 
 // ---------- Zyklus (nur Frauen, Opt-in) ----------

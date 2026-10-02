@@ -9,7 +9,7 @@ import { buildSeries, todayIso, addDays } from "@/lib/metrics";
 const PNAME = { intervals: "intervals.icu", whoop: "WHOOP", garmin: "Garmin", oura: "Oura", apple: "Apple", demo: "Beispiel", strava: "Strava", zwift: "Zwift" };
 const r1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1));
 const r0 = (v) => (v == null ? "–" : Math.round(v));
-import { syncNow, disconnect, loadDemo, removeDemo, fullResync, connectIntervals } from "../../actions-data";
+import { syncNow, disconnect, loadDemo, removeDemo, fullResync, connectIntervals, importNutrition } from "../../actions-data";
 import ActionForm from "@/components/ActionForm";
 import GarminImport from "@/components/GarminImport";
 import SyncButton from "@/components/SyncButton";
@@ -35,6 +35,8 @@ export default async function Quellen({ searchParams }) {
   const today = todayIso();
   const series = await buildSeries(subject.id, addDays(today, -40), today);
   const T = series.all[series.all.length - 1], recP = Object.keys(T?.prov || {});
+  const foodE = (await repo.getManual(subject.id)).filter((e) => e.kind === "food").sort((a, b) => (a.day < b.day ? -1 : 1));
+  const foodN = foodE.length, foodLast = foodE.at(-1)?.day || "", garminKcal = series.all.slice(-30).some((d) => d.kcalIn);
   const iv = by.intervals;
   const extraOpen = Boolean(by.strava || by.whoop);
   return (
@@ -103,6 +105,28 @@ export default async function Quellen({ searchParams }) {
         </div>
         <p className="note">Nur nötig für Jahre vor intervals.icu oder für Body Battery und Stress. Übernommen werden u. a. Schlafphasen, Body Battery, Stress, HRV, Ruhepuls, SpO2, Training Readiness, VO2max, Gewicht und alle Workouts.</p>
       </details>
+      <section className="panel" id="ernaehrung">
+        <div className="panel-head"><h2>Ernährung: MyFitnessPal & Co.</h2><span className="note">{foodN ? `${foodN} Tage importiert, zuletzt ${foodLast.split("-").reverse().join(".")}` : "noch keine Ernährungsdaten"}{garminKcal ? " · Kalorien von Garmin kommen an" : ""}</span></div>
+        <div className="grid2e">
+          <div className="stack">
+            <h3>Automatisch über Garmin</h3>
+            <p className="note">MyFitnessPal hat keine offene Schnittstelle mehr. Verbinde in der MyFitnessPal-App <b>Garmin Connect</b> (Mehr → Apps & Geräte → Garmin). Dann landen die gegessenen Kalorien bei Garmin und – sofern intervals.icu sie weitergibt – automatisch hier.</p>
+            <h3>Export hochladen</h3>
+            <ol className="note" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
+              <li><b>MyFitnessPal</b> (Premium): auf myfitnesspal.com → Einstellungen → <b>Daten exportieren</b> → Zeitraum wählen; per E-Mail kommt eine ZIP. Darin die Datei <b>Nutrition-Summary…csv</b>.</li>
+              <li><b>Cronometer</b>: Mehr → Konto → <b>Daten exportieren</b> → «Daily Nutrition» als CSV.</li>
+              <li>CSV hier auswählen. Bereits importierte Tage werden ersetzt – einfach regelmässig neu hochladen.</li>
+            </ol>
+          </div>
+          {own ? (
+            <ActionForm action={importNutrition} className="stack" submit="CSV importieren" busy="Liest…">
+              <label className="f">CSV-Datei<input type="file" name="file" accept=".csv,text/csv" required /></label>
+              <p className="note">Übernommen werden pro Tag Kalorien, Kohlenhydrate, Protein und Fett. Formstand vergleicht sie mit deinem Tagesziel, zeigt den Verlauf unter Trends und die KI berücksichtigt sie.</p>
+            </ActionForm>
+          ) : <p className="muted">Den Import macht die Person selbst.</p>}
+        </div>
+      </section>
+
       {recP.length > 0 && (
         <section className="panel">
           <div className="panel-head"><h2>Quellenabgleich heute</h2><span className="note">Jedes Gerät misst anders. Formstand rechnet jedes gegen seine eigene Baseline und kombiniert dann („Bereinigt“).</span></div>

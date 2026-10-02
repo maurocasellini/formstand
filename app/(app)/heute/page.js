@@ -16,6 +16,7 @@ import { getTodayAdvice, todayModel, feedbackModel, getBrief, briefState, makeBr
 import Brief from "@/components/Brief";
 import CycleCard from "@/components/CycleCard";
 import { cycleInfo } from "@/lib/cycle";
+import { foodOf } from "@/lib/nutrition";
 import { after } from "next/server";
 import Tabs from "@/components/Tabs";
 import Feedback from "@/components/Feedback";
@@ -70,7 +71,7 @@ const RPE = [[1, "sehr leicht"], [2, "leicht"], [3, "locker"], [4, "moderat"], [
 export const maxDuration = 60;
 
 // Entscheidung des Regelwerks; die KI-Erklärung kommt dazu, wenn sie zu genau dieser Entscheidung gehört
-function Decision({ d, a }) {
+function Decision({ d, a, ate }) {
   const t = a ? new Date(a.created_at).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" }) : null;
   const n = d.nutrition;
   return (
@@ -87,8 +88,9 @@ function Decision({ d, a }) {
         <div><dt>Ernährung</dt><dd>{a?.nutrition || <>
           <b>ca. {fmtRange(range(n.kcal), " kcal")}</b> · ca. {fmtRange(range(n.carbs_g, 0.1, 10), " g")} Kohlenhydrate · {fmtRange(range(n.protein_g, 0.08, 5), " g")} Protein · {fmtRange(range(n.fat_g, 0.12, 5), " g")} Fett · {n.fluid_l} l trinken
           {n.note && <span className="nl">{n.note}</span>}
+
           {[n.pre, n.during, n.post].filter(Boolean).map((x, i) => <span key={i} className="nl">{x}</span>)}
-        </>}</dd></div>
+        </>}{ate && <span className="nl"><b>Gestern gegessen ({ate.src}):</b> {ate.kcal.toLocaleString("de-CH")} kcal{ate.protein_g ? ` · ${ate.protein_g} g Protein` : ""}{ate.carbs_g ? ` · ${ate.carbs_g} g Kohlenhydrate` : ""}</span>}</dd></div>
         {a?.recovery && <div><dt>Erholung</dt><dd>{a.recovery}</dd></div>}
         <div><dt>Morgen</dt><dd>{d.tomorrow}</dd></div>
       </dl></details>
@@ -280,7 +282,7 @@ export default async function Heute({ demo } = {}) {
           </div>
         <div className="panel" id="entscheidung">
           <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
-          {decision ? <Decision d={decision} a={fresh} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
+          {decision ? <Decision d={decision} a={fresh} ate={foodOf(all[all.length - 2])} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
           {viewer.demo || !decision ? null : ai ? (
             <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}

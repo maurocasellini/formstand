@@ -16,6 +16,7 @@ export default function Feedback({ f, ai, aiOn, ro, action }) {
     ["Ø Schlaf", k.sleep != null ? `${k.sleep} h` : "–", k.sleep != null && k.sleepPrev != null ? `${sg((k.sleep - k.sleepPrev) * 60)} min zu vorher` : null],
     ["Fitness (CTL)", k.ctl ?? "–", k.ctlDelta != null ? `${sg(k.ctlDelta)} im Zeitraum` : null],
     (k.alc > 0 || k.alcPrev > 0) && ["Alkohol", `${k.alc} Abende`, k.alcPrev != null ? `vorher ${k.alcPrev}` : null],
+    k.kcalIn != null && ["Ø gegessen", `${k.kcalIn.toLocaleString("de-CH")} kcal`, k.proteinIn ? `${k.proteinIn} g Protein` : null, `${k.foodDays} Tage erfasst`],
     k.weightDelta != null && ["Gewicht", `${sg(k.weightDelta, 1)} kg`, "im Zeitraum"],
   ].filter(Boolean)
     // ohne Daten: ausblenden – Schlaf bleibt sichtbar, aber ausgegraut
