@@ -21,7 +21,9 @@ import { ACT_LABEL } from "@/lib/adherence";
 import ActionForm from "@/components/ActionForm";
 import Targets from "@/components/Targets";
 import Spark from "@/components/Spark";
-import { trendTiles, findings, weekStatus } from "@/lib/overview";
+import { findings, weekStatus } from "@/lib/overview";
+import { trendDetails } from "@/lib/trends";
+import TrendsPanel from "@/components/TrendsPanel";
 import { vo2Summary } from "@/lib/vo2";
 import { targetsOf } from "@/lib/targets";
 
@@ -143,6 +145,11 @@ const DEMO_BRIEF = (today) => ({
   created_at: today + "T06:00:00Z", week: today,
 });
 
+const DEMO_TRENDS = {
+  fazit: "Kurzfristig wie langfristig zeigt alles in die richtige Richtung: Die Fitness ist über drei Monate stetig gestiegen, während der Ruhepuls leicht sinkt – das ist echte Anpassung, nicht nur Müdigkeit. Die HRV schwankt mehr als nötig; die Ausreisser nach unten fallen fast immer auf Abende mit Alkohol.",
+  metriken: { HRV: "Im Schnitt stabil, aber mit Dellen nach Alkohol-Abenden. Die Basis ist gut – weniger Ausreisser würden mehr harte Tage ermöglichen.", Ruhepuls: "Sinkt langsam über die Monate: ein klassisches Zeichen besserer Grundform.", Schlaf: "Solide um 7,2 h; die kürzesten Nächte liegen vor harten Tagen – genau dort lohnt sich eine halbe Stunde mehr.", Bereitschaft: "Mehr gute als schlechte Tage; die Tiefs folgen auf Belastungsspitzen und erholen sich in 1–2 Tagen.", Training: "Fitness steigt gleichmässig, die Ermüdung bleibt im Rahmen – so kann der Aufbau weitergehen. Die Stunden pro Woche sind konstant, gut so.", VO2max: "Für dein Alter überragend und leicht steigend – die Intervalle wirken.", Gewicht: "Leichtes Auf und Ab ohne klaren Trend; für das Zielgewicht bräuchte es an lockeren Tagen etwas weniger Energie." },
+};
+
 // Was kommt als Nächstes? Die nächsten Tage aus dem (adaptiven) Plan, nächster Wettkampf, was Formstand gelernt hat
 const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 function Next({ items, today, week, phase, learned, base, children }) {
@@ -172,7 +179,7 @@ export default async function Heute({ demo } = {}) {
   const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
   const hasAny = activities.length || providers.length;
   const tg = targetsOf(goals, manual, all, today);
-  const tiles = trendTiles(all, vo2Summary(all, manual, subject, today));
+  const td = trendDetails(all);
   const fnd = findings(all, { activities, st, goals, triggers });
   // Rückblick & Feedback: Woche, Vorwoche, 30 Tage, 90 Tage (+ gespeichertes KI-Feedback je Zeitraum)
   const fbs = all.length > 40 ? await feedbackModel(subject.id, M) : [];
@@ -300,17 +307,10 @@ export default async function Heute({ demo } = {}) {
         </section>
       )}
 
-      {hasAny && tiles.length > 0 && (
+      {hasAny && Object.keys(td).length > 0 && (
         <section className="panel">
-          <div className="panel-head"><h2 id="trends">Trends</h2><span className="note">letzte 4 Wochen · Band = dein Normalbereich, gestrichelt = dein Ø</span></div>
-          <div className="tiles">{tiles.map((t) => (
-            <Link key={t.k} href={t.k === "vo2max" ? `${base}/tests#vo2` : `${base}/entwicklung`} className={`tile ${t.tone}`}>
-              <span className="tl">{t.label}{t.stale && <small className="note"> · {t.day.slice(8, 10)}.{t.day.slice(5, 7)}.</small>}</span>
-              <b>{t.cur}<small className="note"> {t.unit}</small></b>
-              <Spark pts={t.pts} m={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.m} s={t.k === "ctl" || t.k === "tsb" || t.k === "weight" ? null : t.s} tone={t.tone} />
-              {t.text && <small className={`tt ${t.tone}`}>{t.text}</small>}
-            </Link>
-          ))}</div>
+          <div className="panel-head"><h2 id="trends">Trends</h2><span className="note">kräftige Linie = 7-Tage-Schnitt · Punkte = Tageswerte · Band = dein Normalbereich · antippen für Details</span></div>
+          <TrendsPanel td={td} ai={viewer.demo ? DEMO_TRENDS : brief?.trends} />
         </section>
       )}
 
