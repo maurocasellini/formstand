@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const W = 600, H = 180, L = 48, R = 70, T = 12, B = 28;
+const W = 600, H = 150, L = 48, R = 70, T = 10, B = 26;
 const dm = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.`;
 
 // Fitness (CTL) und Ermüdung (ATL) als zwei Linien, direkt beschriftet; Fadenkreuz mit Form (TSB)
@@ -39,7 +39,7 @@ export function LoadChart({ days, ctl, atl, tsb }) {
 // Wochenstunden: gestapelt Ausdauer + Kraft, 2px Lücke, Hover je Woche
 export function WeeksChart({ weeks }) {
   const [hi, setHi] = useState(null);
-  const Wd = 600, Hd = 160, l = 40, r = 6, t = 10, b = 28;
+  const Wd = 600, Hd = 140, l = 40, r = 6, t = 10, b = 26;
   const max = Math.max(1, ...weeks.map((w) => w.hours)) * 1.1, n = weeks.length;
   const bw = (Wd - l - r) / n, y = (v) => t + ((max - v) * (Hd - t - b)) / max;
   const avg = weeks.slice(0, -1).reduce((s, w) => s + w.hours, 0) / Math.max(1, n - 1);

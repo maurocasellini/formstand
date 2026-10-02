@@ -9,11 +9,13 @@ import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, createBrief, saveCheckin, rateSession, saveEvening } from "../../actions-data";
+import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, createBrief, addPeriod, saveCycleSymptoms, saveCheckin, rateSession, saveEvening } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
 import { getTodayAdvice, todayModel, feedbackModel, getBrief, briefState, makeBrief } from "@/lib/coach";
 import Brief from "@/components/Brief";
+import CycleCard from "@/components/CycleCard";
+import { cycleInfo } from "@/lib/cycle";
 import { after } from "next/server";
 import Tabs from "@/components/Tabs";
 import Feedback from "@/components/Feedback";
@@ -181,6 +183,10 @@ export default async function Heute({ demo } = {}) {
   const tg = targetsOf(goals, manual, all, today);
   const td = trendDetails(all);
   const fnd = findings(all, { activities, st, goals, triggers });
+  // Zyklus: nur Frauen mit eingeschaltetem Tracking; privat (ausser freigegeben)
+  const cyc = cycleInfo({ user: subject, manual, all, today });
+  const showCyc = cyc && !viewer.demo && (viewer.id === subject.id || subject.cycle_share);
+  if (showCyc && (cyc.phase === "lut" || cyc.phase === "late")) for (const f of fnd) if (/HRV|Ruhepuls/.test(f.title)) { f.text += " Du bist in der Lutealphase – eine etwas tiefere HRV und ein höherer Ruhepuls sind dort normal."; if (f.tone === "crit") f.tone = "warn"; }
   // Rückblick & Feedback: Woche, Vorwoche, 30 Tage, 90 Tage (+ gespeichertes KI-Feedback je Zeitraum)
   const fbs = all.length > 40 ? await feedbackModel(subject.id, M) : [];
   const fbAi = await repo.getFeedback(subject.id);
@@ -231,7 +237,7 @@ export default async function Heute({ demo } = {}) {
 
       {hasAny && (
         <nav className="subnav jump" aria-label="Auf dieser Seite">
-          <a href="#drauf">Heute</a><a href="#coach">Wochenbrief</a><a href="#rueckblick">Rückblick</a><a href="#auffaellig">Was auffällt</a><a href="#trends">Trends</a>{ws && <a href="#woche">Woche</a>}{tg.length > 0 && <a href="#ziele">Ziele</a>}<a href="#faktoren">Einflussfaktoren</a>
+          <a href="#drauf">Heute</a>{showCyc && <a href="#zyklus">Zyklus</a>}<a href="#coach">Wochenbrief</a><a href="#rueckblick">Rückblick</a><a href="#auffaellig">Was auffällt</a><a href="#trends">Trends</a>{ws && <a href="#woche">Woche</a>}{tg.length > 0 && <a href="#ziele">Ziele</a>}<a href="#faktoren">Einflussfaktoren</a>
         </nav>
       )}
 
@@ -279,6 +285,13 @@ export default async function Heute({ demo } = {}) {
             <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
+        </section>
+      )}
+
+      {showCyc && (
+        <section className="panel">
+          <div className="panel-head"><h2 id="zyklus">Zyklus</h2><span className="note">{viewer.id === subject.id ? (subject.cycle_share ? "für Coach/Admin freigegeben" : "nur für dich sichtbar") : "freigegeben"} · <Link href="/konto#zyklus">Einstellungen</Link></span></div>
+          <CycleCard c={cyc} today={today} addPeriod={addPeriod} saveSymptoms={saveCycleSymptoms} own={viewer.id === subject.id} />
         </section>
       )}
 

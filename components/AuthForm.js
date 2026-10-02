@@ -7,7 +7,9 @@ export default function AuthForm({ action, fields, submit }) {
     <form action={formAction} className="stack">
       {fields.map((f) => (
         <label key={f.name} className="f">{f.label}
-          <input name={f.name} type={f.type || "text"} required={f.required !== false} autoComplete={f.auto} minLength={f.min} autoCapitalize="none" spellCheck={false} />
+          {f.options ? <select name={f.name} defaultValue="">{f.options.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select> :
+          <input name={f.name} type={f.type || "text"} required={f.required !== false} autoComplete={f.auto} minLength={f.min} autoCapitalize="none" spellCheck={false} />}
+          {f.hint && <small className="note">{f.hint}</small>}
         </label>
       ))}
       {state?.error && <div className="notice crit">{state.error}</div>}

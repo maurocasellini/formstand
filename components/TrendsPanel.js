@@ -23,8 +23,7 @@ function MetricCard({ x, coach, prof }) {
   return (
     <div className={`tr-card${r?.lvl === 4 ? " top" : ""}`}>
       {r?.lvl === 4 && <span className="tr-ribbon">Spitzenwert</span>}
-      <div className="tr-h"><b>{x.label}</b><span className={`tr-chip ${x.tone}`}>{x.trend}{x.delta ? ` · ${x.delta}` : ""}</span></div>
-      <div className="tr-cur">{f(x.cur)}<small>{x.unit}</small></div>
+      <div className="tr-h"><b>{x.label}</b><span className="tr-cur">{f(x.cur)}<small>{x.unit}</small></span><span className={`tr-chip ${x.tone}`}>{x.trend}{x.delta ? ` · ${x.delta}` : ""}</span></div>
       <Rating r={r} basis={x.key === "score" ? "Ø Zeitraum" : x.sparse ? "Ø letzte 3 Messungen" : "Ø 7 Tage"} />
       <TrendChart sparse={x.sparse} days={x.days} vals={x.vals} roll={x.roll} m={x.m} s={x.s} unit={x.unit} dec={x.dec} tone={x.tone} label={x.label} />
       <div className="tr-stats">
@@ -61,8 +60,7 @@ export default function TrendsPanel({ td, ai, prof = {} }) {
                       <h3>Training</h3>
                       <div className="tr-grid">
                         <div className={`tr-card${rate("ctl", R.training.ctlNow)?.lvl === 4 ? " top" : ""}`}>
-                          <div className="tr-h"><b>Fitness & Ermüdung</b><span className={`tr-chip ${R.training.ctlChange > 2 ? "good" : R.training.ctlChange < -3 ? "warn" : ""}`}>Fitness {R.training.ctlChange >= 0 ? "+" : "−"}{Math.abs(R.training.ctlChange).toFixed(0)}</span></div>
-                          <div className="tr-cur">{Math.round(R.training.ctlNow)}<small>CTL · Form {Math.round(R.training.tsbNow)}</small></div>
+                          <div className="tr-h"><b>Fitness & Ermüdung</b><span className="tr-cur">{Math.round(R.training.ctlNow)}<small>CTL · Form {Math.round(R.training.tsbNow)}</small></span><span className={`tr-chip ${R.training.ctlChange > 2 ? "good" : R.training.ctlChange < -3 ? "warn" : ""}`}>Fitness {R.training.ctlChange >= 0 ? "+" : "−"}{Math.abs(R.training.ctlChange).toFixed(0)}</span></div>
                           <Rating r={rate("ctl", R.training.ctlNow)} />
                           <LoadChart days={R.training.days} ctl={R.training.ctl} atl={R.training.atl} tsb={R.training.tsb} />
                           <div className="tr-legend"><span><i style={{ background: "var(--ch-1)" }} />Fitness (CTL, 6 Wochen)</span><span><i style={{ background: "var(--ch-2)" }} />Ermüdung (ATL, 7 Tage)</span></div>

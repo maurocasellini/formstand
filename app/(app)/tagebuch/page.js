@@ -6,7 +6,7 @@ import { TEST_TYPES, TEST_GROUPS, TEST_DURATIONS, testText, TRIGGERS, triggerNam
 import TestForm from "@/components/TestForm";
 import FitnessProfile from "@/components/FitnessProfile";
 import { fitnessProfile } from "@/lib/fitness";
-import { addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia, adoptWeaknesses } from "../../actions-data";
+import { addPeriod, addManual, deleteManual, updateProfile, addWorkout, deleteWorkout, saveEvening, saveEveningGrid, uploadMedia, adoptWeaknesses } from "../../actions-data";
 import FilePick from "@/components/FilePick";
 import { aiReady } from "@/lib/ai";
 import EveningForm from "@/components/EveningForm";
@@ -15,7 +15,7 @@ import { INBODY_FIELDS } from "@/lib/ai";
 import { analyzeTriggers, analyzePairs, pairLine } from "@/lib/triggers";
 import ActionForm from "@/components/ActionForm";
 
-const KIND = { inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Einflussfaktor", test: "Leistungstest", note: "Notiz" };
+const KIND = { period: "Periodenbeginn", cycle_sym: "Zyklus-Symptome", inbody: "InBody", weight: "Gewicht", bodyfat: "Körperfett", trigger: "Einflussfaktor", test: "Leistungstest", note: "Notiz" };
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 
@@ -27,7 +27,9 @@ export default async function Tagebuch({ demo } = {}) {
   const eve = eveningMap(allMan, addDays(today, -400));
   const gridDays = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
   const FACTORS = TRIGGERS.filter(([k]) => k !== "alkohol");
-  const entries = allMan.slice(0, 60);
+  // Zyklusdaten nur für die Person selbst (oder freigegeben)
+  const cycOk = viewer.id === subject.id || subject.cycle_share;
+  const entries = allMan.filter((e) => cycOk || !["period", "cycle_sym"].includes(e.kind)).slice(0, 60);
   const tests = allMan.filter((e) => e.kind === "test");
   const ftp = tests.find((t) => TEST_TYPES[t.data?.test]?.ftp), lt = tests.find((t) => TEST_TYPES[t.data?.test]?.hr), css = tests.find((t) => TEST_TYPES[t.data?.test]?.css);
   const wLast = allMan.find((e) => e.kind === "weight");
@@ -48,7 +50,7 @@ export default async function Tagebuch({ demo } = {}) {
     <>
       <div className="head"><div style={{ display: "grid", gap: 4 }}><h1>Tagebuch</h1><p>Was keine Uhr misst: Training ohne Uhr nachtragen und Einflussfaktoren wie Alkohol, Stress oder spätes Essen – auch rückwirkend. Tests haben eine eigene Seite, Gewicht und InBody stehen unter Körper.</p></div></div>
 
-      <nav className="subnav" aria-label="Abschnitte"><a href="#training">Training nachtragen</a><a href="#trigger">Einflussfaktoren</a><a href="#eintraege">Alle Einträge</a></nav>
+      <nav className="subnav" aria-label="Abschnitte"><a href="#training">Training nachtragen</a><a href="#trigger">Einflussfaktoren</a>{subject.sex === "w" && subject.cycle_on && viewer.id === subject.id && <a href="#zyklus">Zyklus</a>}<a href="#eintraege">Alle Einträge</a></nav>
 
       <section className="panel">
         <div className="panel-head"><h2 id="training">Training nachtragen</h2><span className="note">für Einheiten ohne Uhr – zählt für Belastung, Muskulatur und Plan-Treue</span></div>
@@ -113,6 +115,22 @@ export default async function Tagebuch({ demo } = {}) {
         </>)}
         <p className="note">Das sind Zusammenhänge in deinen eigenen Daten, keine Beweise für Ursache und Wirkung. „Ziemlich sicher“: deutlicher Unterschied über viele Abende. „Tendenz“: Richtung erkennbar, aber noch unsicher. „Training spät abends“ (Start nach 19 Uhr) und „Harte Einheit“ erkennt Formstand automatisch. Positive Faktoren wie Mobility, Meditation oder Massage lassen sich genauso eintragen.</p>
       </section>
+
+      {subject.sex === "w" && subject.cycle_on && viewer.id === subject.id && (() => {
+        const starts = allMan.filter((e) => e.kind === "period").sort((a, b) => (a.day < b.day ? 1 : -1));
+        return (
+          <section className="panel">
+            <div className="panel-head"><h2 id="zyklus">Zyklus</h2><span className="note">nur für dich sichtbar · Periodenbeginn auch rückwirkend</span></div>
+            <ActionForm action={addPeriod} submit="Periodenbeginn speichern">
+              <label className="f">Erster Tag der Periode<DateField name="day" defaultValue={today} max={today} /></label>
+            </ActionForm>
+            {starts.length ? <ul className="list">{starts.slice(0, 12).map((e, i) => (
+              <li key={e.id}><span className="tag">{fmt(e.day)}</span><span>{starts[i + 1] ? `Zyklus ${Math.round((new Date(e.day) - new Date(starts[i + 1].day)) / 864e5)} Tage` : "erster Eintrag"}</span>
+                <form action={deleteManual}><input type="hidden" name="id" value={e.id} /><button className="x" type="submit" aria-label="Löschen">✕</button></form></li>
+            ))}</ul> : <p className="muted">Noch keine Einträge. Am besten die letzten 2–3 Periodenstarts nachtragen – dann stimmt die Prognose sofort.</p>}
+          </section>
+        );
+      })()}
 
       <section className="panel">
         <div className="panel-head"><h2 id="eintraege">Alle Einträge</h2><span className="note">{entries.length} angezeigt</span></div>

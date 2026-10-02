@@ -24,6 +24,7 @@ export default async function Register() {
               { name: "name", label: "Vor- und Nachname", auto: "name" },
               { name: "email", label: "E-Mail (optional)", type: "email", auto: "email", required: false },
               { name: "password", label: "Passwort (mind. 8 Zeichen)", type: "password", auto: "new-password", min: 8 },
+              { name: "sex", label: "Geschlecht (optional)", options: [["", "keine Angabe"], ["w", "Frau"], ["m", "Mann"]], hint: "Für Richtwerte (VO2max, Ruhepuls) und – bei Frauen – das optionale Zyklus-Tracking. Später im Konto änderbar." },
             ]} />
           </>
         ) : <div className="notice warn">Die Registrierung ist geschlossen. Konten legt der Admin an.</div>}

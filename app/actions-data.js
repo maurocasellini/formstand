@@ -18,6 +18,7 @@ import { applyTest } from "@/lib/testread";
 import { makeAdvice, makeFeedback, makeBrief } from "@/lib/coach";
 import { sendTo } from "@/lib/push";
 import { TARGET_METRICS, seriesOf, ambition, goalEffects } from "@/lib/targets";
+import { SYMPTOMS } from "@/lib/cycle";
 import { WEAKNESSES, EVENT_TYPES, FOCUS, MEDIA_KINDS, TRIGGERS, TEST_TYPES, TEST_RANGE, TEST_DURATIONS, testText } from "@/lib/catalog";
 
 async function ctx() {
@@ -58,6 +59,29 @@ export async function addManual(_prev, form) {
   if (kind === "weight") await repo.updateUser(subject.id, { weight_kg: value });
   revalidatePath("/", "layout");
   return { ok: "Gespeichert." };
+}
+
+// ---------- Zyklus (nur Frauen, Opt-in) ----------
+export async function addPeriod(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  if (viewer.id !== subject.id) return { error: "Zyklusdaten trägt nur die Person selbst ein." };
+  const day = dayOf(form.get("day"));
+  if ((await repo.getManual(subject.id)).some((e) => e.kind === "period" && e.day === day)) return { ok: "Schon eingetragen." };
+  await repo.addManual(subject.id, { day, kind: "period", value: null, data: {}, created_by: viewer.id });
+  revalidatePath("/", "layout");
+  return { ok: `Periodenbeginn ${day.split("-").reverse().join(".")} gespeichert.` };
+}
+export async function saveCycleSymptoms(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  if (viewer.id !== subject.id) return { error: "Zyklusdaten trägt nur die Person selbst ein." };
+  const day = dayOf(form.get("day"));
+  const s = form.getAll("s").map(String).filter((x) => SYMPTOMS.some(([k]) => k === x));
+  for (const e of (await repo.getManual(subject.id)).filter((e) => e.kind === "cycle_sym" && e.day === day)) await repo.deleteManual(subject.id, e.id);
+  if (s.length) await repo.addManual(subject.id, { day, kind: "cycle_sym", value: s.length, data: { s }, created_by: viewer.id });
+  revalidatePath("/", "layout");
+  return { ok: s.length ? "Symptome gespeichert." : "Symptome entfernt." };
 }
 
 // Einflussfaktoren: Alkohol (Gläser) getrennt, weitere Faktoren zum Antippen. Ein Abend oder viele Abende (Nachtragen).
@@ -103,7 +127,14 @@ export async function updateProfile(_prev, form) {
   const patch = {};
   if (form.has("sport")) patch.sport = String(form.get("sport") || "").slice(0, 40) || null;
   if (form.has("birth_year")) patch.birth_year = numOf(form.get("birth_year"));
-  if (form.has("sex")) patch.sex = ["m", "w"].includes(String(form.get("sex"))) ? String(form.get("sex")) : null;
+  if (form.has("sex")) { patch.sex = ["m", "w"].includes(String(form.get("sex"))) ? String(form.get("sex")) : null; if (patch.sex !== "w") patch.cycle_on = false; }
+  if (form.has("cycle_form")) {
+    patch.cycle_on = form.get("cycle_on") === "on";
+    patch.cycle_mode = ["natural", "hormonal", "none"].includes(String(form.get("cycle_mode"))) ? String(form.get("cycle_mode")) : "natural";
+    const cl = Math.round(numOf(form.get("cycle_len")) || 28), pl = Math.round(numOf(form.get("period_len")) || 5);
+    patch.cycle_len = Math.max(20, Math.min(45, cl)); patch.period_len = Math.max(2, Math.min(10, pl));
+    patch.cycle_share = form.get("cycle_share") === "on"; patch.cycle_ai = form.get("cycle_ai") === "on";
+  }
   if (form.has("weight_kg")) patch.weight_kg = numOf(form.get("weight_kg"));
   if (form.has("height_cm")) { const h = numOf(form.get("height_cm")); if (h != null && (h < 120 || h > 230)) return { error: "Grösse in cm, z. B. 182." }; patch.height_cm = h; }
   await repo.updateUser(subject.id, patch);

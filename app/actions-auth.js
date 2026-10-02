@@ -26,7 +26,8 @@ export async function register(_prev, form) {
   if (email && !email.includes("@")) return { error: "E-Mail sieht nicht gültig aus." };
   if (pw.length < 8) return { error: "Passwort mit mindestens 8 Zeichen wählen." };
   let u;
-  try { u = await repo.createUser({ username, name, email, password: pw, role: "athlete" }); } catch (e) { return { error: e.message }; }
+  const sex = ["w", "m"].includes(String(form.get("sex"))) ? String(form.get("sex")) : null;
+  try { u = await repo.createUser({ username, name, email, password: pw, role: "athlete", sex }); } catch (e) { return { error: e.message }; }
   await createSession(u);
   redirect("/quellen?ok=" + encodeURIComponent("Willkommen! Verbinde jetzt deine Apps."));
 }

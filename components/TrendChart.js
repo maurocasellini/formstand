@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const W = 600, H = 180, L = 48, R = 10, T = 12, B = 28;
+const W = 600, H = 150, L = 48, R = 10, T = 10, B = 26;
 const dm = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.`;
 
 // Verlauf einer Kennzahl: Tageswerte (Punkte bzw. dünne Linie), 7-Tage-Schnitt (kräftige Linie), Normalbereich (Band), Ø (gestrichelt).
