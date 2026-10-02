@@ -865,3 +865,10 @@ main h2[id],main details[id]{scroll-margin-top:120px}
 .mic.on{background:var(--crit-soft);color:var(--crit-ink);animation:micpulse 1.2s ease-in-out infinite}
 @keyframes micpulse{50%{opacity:.6}}
 @media (prefers-reduced-motion:reduce){.mic.on{animation:none}}
+/* Trends: Details aufklappen */
+.tr-more{display:grid;gap:6px}
+.tr-more>summary{cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--accent-ink);padding:2px 0;display:flex;align-items:center;gap:4px}
+.tr-more>summary::-webkit-details-marker{display:none}
+.tr-more>summary::before{content:"▸";transition:transform .15s}
+.tr-more[open]>summary::before{transform:rotate(90deg)}
+.tr-more[open]{gap:8px}

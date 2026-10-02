@@ -25,7 +25,10 @@ export default function Feedback({ f, ai, aiOn, ro, action, reply }) {
   return (
     <div className="fb">
       <div className={`fb-head ${f.tone}`}><b>{f.headline}</b><span className="note">{fmtD(f.from)}–{fmtD(f.to)}{f.running ? " · Zwischenstand" : ""}</span></div>
+      <div className="fb-kpis">{kpis.slice(0, 3).map(([l, v, d]) => v === "–" ? <div key={l} className="nodata"><span>{l}</span><b>keine Daten</b></div> : <div key={l}><span>{l}</span><b>{v}</b>{d && <small>{d}</small>}</div>)}</div>
+      {kpis.length > 3 && <details className="tr-more"><summary>Alle Kennzahlen ({kpis.length})</summary>
       <div className="fb-kpis">{kpis.map(([l, v, d, x]) => v === "–" ? <div key={l} className="nodata"><span>{l}</span><b>keine Daten</b><small>Uhr nachts tragen</small></div> : <div key={l}><span>{l}</span><b>{v}</b>{d && <small>{d}</small>}{x && <small>{x}</small>}</div>)}</div>
+      </details>}
       <div className="fb-cols">
         <div className="ba-list good"><span className="lbl">Das lief gut</span>{f.good.length ? <ul>{f.good.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="note">Noch nichts Auffälliges.</p>}</div>
         <div className="ba-list warn"><span className="lbl">Daran arbeiten</span>{f.work.length ? <ul>{f.work.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="note">Nichts Dringendes.</p>}</div>

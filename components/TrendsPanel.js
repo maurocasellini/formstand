@@ -25,6 +25,8 @@ function MetricCard({ x, coach, prof }) {
       {r?.lvl === 4 && <span className="tr-ribbon">Spitzenwert</span>}
       <div className="tr-h"><b>{x.label}</b><span className="tr-cur">{f(x.cur)}<small>{x.unit}</small></span><span className={`tr-chip ${x.tone}`}>{x.trend}{x.delta ? ` · ${x.delta}` : ""}</span></div>
       <Rating r={r} basis={x.key === "score" ? "Ø Zeitraum" : x.sparse ? "Ø letzte 3 Messungen" : "Ø 7 Tage"} />
+      <details className="tr-more">
+        <summary>Verlauf & Details</summary>
       <TrendChart sparse={x.sparse} days={x.days} vals={x.vals} roll={x.roll} m={x.m} s={x.s} unit={x.unit} dec={x.dec} tone={x.tone} label={x.label} />
       <div className="tr-stats">
         <div><span>{x.sparse ? "Ø 3 Messungen" : "Ø 7 Tage"}</span><b>{f(x.avg7)}</b></div>
@@ -33,6 +35,7 @@ function MetricCard({ x, coach, prof }) {
         <div><span>{x.dir === 0 ? "Messtage" : "Bestwert"}</span><b>{x.dir === 0 || !x.best ? x.n : `${f(x.best.v)}`}</b>{x.dir !== 0 && x.best && <span>{dmy(x.best.day)}</span>}</div>
       </div>
       {coach ? <p className="tr-coach"><b>Coach:</b> {coach}</p> : <p className="note">{x.about}</p>}
+      </details>
     </div>
   );
 }
@@ -62,15 +65,19 @@ export default function TrendsPanel({ td, ai, prof = {} }) {
                         <div className={`tr-card${rate("ctl", R.training.ctlNow)?.lvl === 4 ? " top" : ""}`}>
                           <div className="tr-h"><b>Fitness & Ermüdung</b><span className="tr-cur">{Math.round(R.training.ctlNow)}<small>CTL · Form {Math.round(R.training.tsbNow)}</small></span><span className={`tr-chip ${R.training.ctlChange > 2 ? "good" : R.training.ctlChange < -3 ? "warn" : ""}`}>Fitness {R.training.ctlChange >= 0 ? "+" : "−"}{Math.abs(R.training.ctlChange).toFixed(0)}</span></div>
                           <Rating r={rate("ctl", R.training.ctlNow)} />
+                          <details className="tr-more"><summary>Verlauf & Details</summary>
                           <LoadChart days={R.training.days} ctl={R.training.ctl} atl={R.training.atl} tsb={R.training.tsb} />
                           <div className="tr-legend"><span><i style={{ background: "var(--ch-1)" }} />Fitness (CTL, 6 Wochen)</span><span><i style={{ background: "var(--ch-2)" }} />Ermüdung (ATL, 7 Tage)</span></div>
                           {m.Training ? <p className="tr-coach"><b>Coach:</b> {m.Training}</p> : <p className="note">Liegt die Ermüdung länger über der Fitness, baust du auf – bleibt sie zu lange darüber, droht Überlastung. Form = Fitness − Ermüdung.</p>}
+                          </details>
                         </div>
                         <div className="tr-card">
                           <div className="tr-h"><b>Stunden pro Woche</b><span className="tr-chip">Ø {R.training.avgHours != null ? R.training.avgHours.toFixed(1) : "–"} h</span></div>
+                          <p className="note" style={{ margin: 0 }}>{R.training.text}</p>
+                          <details className="tr-more"><summary>Verlauf</summary>
                           <WeeksChart weeks={R.training.weeks} />
                           <div className="tr-legend"><span><i style={{ background: "var(--ch-1)" }} />Ausdauer</span><span><i style={{ background: "var(--ch-2)" }} />Kraft</span></div>
-                          <p className="note">{R.training.text}</p>
+                          </details>
                         </div>
                       </div>
                     </>
