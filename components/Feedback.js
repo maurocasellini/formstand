@@ -1,11 +1,12 @@
 import ActionForm from "./ActionForm";
+import CoachReply from "./CoachReply";
 
 const fmtD = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.`;
 const sg = (v, d = 0) => (v == null ? "" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`);
 const vs = (a, b, d = 0, unit = "") => (a == null || b == null ? null : `${sg(a - b, d)}${unit} zu vorher`);
 
 // Ein Zeitraum: Urteil, Kennzahlen gegen vorher, gut / verbessern, nächster Schritt, optional KI-Feedback
-export default function Feedback({ f, ai, aiOn, ro, action }) {
+export default function Feedback({ f, ai, aiOn, ro, action, reply }) {
   const k = f.k;
   const kpis = [
     ["Training", k.hours != null ? `${k.hours} h` : "–", vs(k.hours, k.hoursPrev, 1, " h"), `${k.sessions} Einheiten · ${k.quality} hart · ${k.strength} Kraft`],
@@ -40,7 +41,10 @@ export default function Feedback({ f, ai, aiOn, ro, action }) {
           <small className="note">geschrieben {new Date(ai.created_at).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" })}</small>
         </div>
       )}
-      {aiOn && !ro && <ActionForm action={action} className="btnrow" submit={ai ? "KI-Feedback neu schreiben" : "Persönliches KI-Feedback"} busy="Schreibt… (ca. 10 s)" reset={false}><input type="hidden" name="period" value={f.key} /></ActionForm>}
+      <div className="btnrow">
+        {aiOn && !ro && <ActionForm action={action} className="btnrow" submit={ai ? "KI-Feedback aktualisieren" : "Persönliches KI-Feedback"} busy="Schreibt… (ca. 10 s)" reset={false}><input type="hidden" name="period" value={f.key} /></ActionForm>}
+        {aiOn && !ro && ai && reply && <CoachReply action={reply} ctx="feedback" period={f.key} planDefault={false} placeholder="z. B. Die Woche war wegen Reise kurz – nächste Woche habe ich wieder normal Zeit." />}
+      </div>
     </div>
   );
 }

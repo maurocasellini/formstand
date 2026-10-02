@@ -11,7 +11,7 @@ import { weekPlan, mondayOf } from "@/lib/plan";
 import { todayIso, buildSeries, addDays } from "@/lib/metrics";
 import { encrypt } from "@/lib/crypto";
 import { intervals } from "@/lib/providers/intervals";
-import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload } from "@/lib/ai";
+import { aiReady, comparePhotos as aiComparePhotos, findEvent as aiFindEvent, classifyUpload, planFromNote } from "@/lib/ai";
 import { applyInBody, AI_IMAGE_TYPES } from "@/lib/inbody";
 import { runBodyAnalysis } from "@/lib/bodyai";
 import { applyTest } from "@/lib/testread";
@@ -325,6 +325,57 @@ export async function createFeedback(_prev, form) {
   try { await makeFeedback(subject.id, String(form.get("period") || "")); } catch (e) { return { error: String(e.message || e).slice(0, 240) }; }
   revalidatePath("/heute");
   return { ok: "Feedback erstellt." };
+}
+
+// Rückmeldung an den Coach: merken, auf Wunsch den Plan anpassen, betroffenen KI-Text neu schreiben
+export async function replyCoach(_prev, form) {
+  const { viewer, subject, demo } = await ctx();
+  if (demo) return DEMO;
+  const text = String(form.get("text") || "").trim().slice(0, 600);
+  if (text.length < 3) return { error: "Schreib kurz, was der Coach wissen soll." };
+  const scope = form.get("scope") === "always" ? "always" : "week";
+  const where = ["brief", "advice", "feedback"].includes(String(form.get("ctx"))) ? String(form.get("ctx")) : "brief";
+  const today = todayIso(), dow = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7;
+  await repo.addManual(subject.id, { day: today, kind: "coach_note", value: null, data: { text, scope, ctx: where, nextWeek: dow >= 4 }, created_by: viewer.id });
+  const ai = await aiReady();
+  const out = ["Rückmeldung gespeichert – der Coach berücksichtigt sie ab jetzt."];
+  // Plan anpassen (KI deutet die Rückmeldung in konkrete Tagesänderungen um)
+  if (ai && form.get("plan") === "on") {
+    try {
+      const goals = await repo.getGoals(subject.id), user = await repo.getUser(subject.id), zones = await athleteZones(subject.id);
+      const mon = mondayOf(today), items = [...weekPlan(goals, mon, user || {}, zones).items, ...weekPlan(goals, addDays(mon, 7), user || {}, zones).items];
+      const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+      const days = items.filter((x) => x.day >= today).map((x) => ({ datum: x.day, wochentag: WD[new Date(x.day + "T12:00:00Z").getUTCDay()], einheit: x.title, typ: x.type, minuten: x.min || 0 }));
+      const r = await planFromNote({ note: text, days, today, goal: { phase: goals.focus || null } }, subject.id);
+      if (r.changes.length) {
+        const entries = Object.fromEntries(r.changes.map((c) => [String(c.datum), c.aktion === "frei" ? { kind: "off", note: String(c.notiz || text).slice(0, 120) }
+          : c.aktion === "max" ? { kind: "max", min: Math.max(15, Math.min(600, Math.round(Number(c.minuten) || 30))) }
+          : { kind: "session", type: PLAN_TYPES.includes(String(c.typ)) ? String(c.typ) : "easy", sport: ["bike", "run", "swim", "strength", "hyrox", "other"].includes(String(c.sport)) ? String(c.sport) : null, title: String(c.titel || "Training").slice(0, 60), min: Math.max(10, Math.min(600, Math.round(Number(c.minuten) || 60))), note: String(c.notiz || "").slice(0, 160) || null,
+              ...(c.zweite?.titel ? { second: { title: String(c.zweite.titel).slice(0, 60), min: Math.max(10, Math.min(300, Math.round(Number(c.zweite.minuten) || 30))) } } : {}) }]));
+        const cutoff = addDays(today, -21);
+        const frozen = pastOf(items.filter((x) => x.day < mondayOf(addDays(mon, 7))), goals);
+        await repo.updateGoals(subject.id, (g) => ({ ...g, overrides: { ...frozen, ...Object.fromEntries(Object.entries(g.overrides || {}).filter(([d]) => d >= cutoff)), ...entries }, updated_at: g.updated_at || new Date().toISOString() }));
+        out.push(`Plan angepasst (${r.changes.length} ${r.changes.length === 1 ? "Tag" : "Tage"})${r.answer ? `: ${r.answer}` : "."}`);
+      } else if (r.answer) out.push(r.answer);
+    } catch (e) { out.push(`Plan nicht angepasst: ${String(e.message || e).slice(0, 140)}`); }
+  }
+  // Betroffenen Text neu schreiben
+  if (ai) {
+    try {
+      if (where === "brief") await makeBrief(subject.id);
+      else if (where === "advice") await makeAdvice(subject.id);
+      else if (where === "feedback" && form.get("period")) await makeFeedback(subject.id, String(form.get("period")));
+      out.push(where === "brief" ? "Wochenbrief neu geschrieben." : where === "advice" ? "Erklärung neu geschrieben." : "Feedback neu geschrieben.");
+    } catch (e) { out.push(`Neu schreiben ging nicht: ${String(e.message || e).slice(0, 140)}`); }
+  }
+  revalidatePath("/", "layout");
+  return { ok: out.join(" ") };
+}
+export async function deleteCoachNote(form) {
+  const { subject, demo } = await ctx();
+  if (demo) return DEMO;
+  await repo.deleteManual(subject.id, String(form.get("id")));
+  revalidatePath("/", "layout");
 }
 
 // Wochenbrief der KI jetzt (neu) schreiben

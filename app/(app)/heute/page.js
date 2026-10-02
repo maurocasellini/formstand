@@ -9,11 +9,13 @@ import { loadSplit, ratioWord } from "@/lib/loadsplit";
 import { buildSeries, todayIso, addDays, stateOf, stateText } from "@/lib/metrics";
 import * as repo from "@/lib/repo";
 import { TRIGGERS, triggerName, WEAKNESSES, range, fmtRange } from "@/lib/catalog";
-import { addManual, deleteManual, loadDemo, createAdvice, createFeedback, createBrief, addPeriod, saveCycleSymptoms, saveCheckin, rateSession, saveEvening } from "../../actions-data";
+import { replyCoach, deleteCoachNote, addManual, deleteManual, loadDemo, createAdvice, createFeedback, createBrief, addPeriod, saveCycleSymptoms, saveCheckin, rateSession, saveEvening } from "../../actions-data";
 import { REGIONS, STATE_NAMES, stateColor } from "@/lib/state";
 import { aiReady } from "@/lib/ai";
 import { getTodayAdvice, todayModel, feedbackModel, getBrief, briefState, makeBrief } from "@/lib/coach";
 import Brief from "@/components/Brief";
+import CoachReply from "@/components/CoachReply";
+import { activeNotes } from "@/lib/coachnotes";
 import CycleCard from "@/components/CycleCard";
 import { cycleInfo } from "@/lib/cycle";
 import { foodOf } from "@/lib/nutrition";
@@ -181,7 +183,7 @@ export default async function Heute({ demo } = {}) {
   const M = await todayModel(subject.id);
   const { today, all, activities, providers, st, cx: ctxv, decision, triggers, phase, yesterday, hasGoals, manual, learned, week, upcoming, goals } = M;
   const [ai, advice] = await Promise.all([aiReady(), getTodayAdvice(subject.id)]);
-  const hasAny = activities.length || providers.length;
+  const hasAny = Boolean(activities.length || providers.length);
   const tg = targetsOf(goals, manual, all, today);
   const td = trendDetails(all);
   const fnd = findings(all, { activities, st, goals, triggers });
@@ -284,7 +286,10 @@ export default async function Heute({ demo } = {}) {
           <div className="panel-head"><h2>Entscheidung für heute</h2><span className={`tag ${fresh ? "on" : ""}`}>{fresh ? "mit KI-Erklärung" : "Regelwerk"}</span></div>
           {decision ? <Decision d={decision} a={fresh} ate={foodOf(all[all.length - 2])} /> : <div className="empty">Sobald Recovery-Daten da sind oder du eincheckst, steht hier die Entscheidung für heute.</div>}
           {viewer.demo || !decision ? null : ai ? (
-            <ActionForm action={createAdvice} className="btnrow" submit={fresh ? "KI-Erklärung neu schreiben" : advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
+            <div className="btnrow">
+              <ActionForm action={createAdvice} className="btnrow" submit={fresh || advice ? "KI-Erklärung aktualisieren" : "Von der KI erklären lassen"} busy="Schreibt…" reset={false} />
+              <CoachReply action={replyCoach} ctx="advice" placeholder="z. B. Heute habe ich nur 45 Minuten über Mittag. / Beine sind noch schwer vom Fussball gestern." />
+            </div>
           ) : <p className="note">Mit Claude (Admin → Schnittstellen) erklärt die KI die Entscheidung zusätzlich persönlich.</p>}
         </div>
         </section>
@@ -300,7 +305,7 @@ export default async function Heute({ demo } = {}) {
       {hasAny && (
         <section className="panel">
           <div className="panel-head"><h2 id="coach">Dein Coach · Wochenbrief</h2><span className="note">{viewer.demo ? "Beispiel – so sieht dein Brief aus" : "alles zusammen, in Worten – jeden Montag neu"}</span></div>
-          <Brief b={viewer.demo ? DEMO_BRIEF(today) : brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} />
+          <Brief b={viewer.demo ? DEMO_BRIEF(today) : brief} state={bState} ai={ai} ro={Boolean(viewer.demo)} action={createBrief} reply={replyCoach} notes={viewer.demo ? [] : activeNotes(manual, today)} delNote={deleteCoachNote} />
         </section>
       )}
 
@@ -308,7 +313,7 @@ export default async function Heute({ demo } = {}) {
         <section className="panel">
           <div className="panel-head"><h2 id="rueckblick">Rückblick & Feedback</h2><span className="note">Woche, Monat und Gesamtbild – jeweils gegen den Zeitraum davor</span></div>
           <Tabs labels={fbs.map((f) => f.label)} start={fbStart}>
-            {fbs.map((f) => <Feedback key={f.key} f={f} ai={aiFor(f)} aiOn={ai} ro={Boolean(viewer.demo)} action={createFeedback} />)}
+            {fbs.map((f) => <Feedback key={f.key} f={f} ai={aiFor(f)} aiOn={ai} ro={Boolean(viewer.demo)} action={createFeedback} reply={replyCoach} />)}
           </Tabs>
         </section>
       )}

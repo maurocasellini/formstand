@@ -1,9 +1,10 @@
 import ActionForm from "./ActionForm";
+import CoachReply from "./CoachReply";
 
 const fmt = (s) => `${s.slice(8, 10)}.${s.slice(5, 7)}.`;
 
 // Wochenbrief: Fliesstext der KI zu allem – Gesamtbild, Training, Erholung, Körper & Ziele, Fokus der Woche
-export default function Brief({ b, state, ai, ro, action }) {
+export default function Brief({ b, state, ai, ro, action, reply, notes = [], delNote }) {
   return (
     <div className="brief">
       {b ? (<>
@@ -16,7 +17,18 @@ export default function Brief({ b, state, ai, ro, action }) {
         : <p className="muted">{ai ? "Noch kein Wochenbrief. Er entsteht jeden Montag automatisch – oder jetzt auf Knopfdruck." : "Der Wochenbrief braucht die KI (Admin → Schnittstellen)."}</p>}
       {b && state?.pending && <p className="note">Der Brief für diese Woche wird gerade geschrieben – gleich neu laden.</p>}
       {state?.error && !state.pending && <p className="note" style={{ color: "var(--crit)" }}>Letzter Versuch fehlgeschlagen: {state.error}</p>}
-      {ai && !ro && <ActionForm action={action} className="btnrow" submit={b ? "Jetzt neu schreiben" : "Wochenbrief schreiben"} busy="Schreibt… (ca. 30 s)" reset={false} />}
+      {notes.length > 0 && (
+        <div className="stack"><span className="lbl">Deine Hinweise an den Coach</span>
+          <ul className="notes">{notes.map((n) => (
+            <li key={n.id}><span>{n.data.text}<small>{n.data.scope === "always" ? "dauerhaft" : "diese Woche"} · {n.day.split("-").reverse().join(".")}</small></span>
+              {!ro && delNote && <form action={delNote}><input type="hidden" name="id" value={n.id} /><button className="x" type="submit" aria-label="Hinweis löschen">✕</button></form>}</li>
+          ))}</ul>
+        </div>
+      )}
+      <div className="btnrow">
+        {ai && !ro && reply && <CoachReply action={reply} ctx="brief" />}
+        {ai && !ro && <ActionForm action={action} className="btnrow" submit={b ? "Wochenbrief aktualisieren" : "Wochenbrief schreiben"} busy="Schreibt… (ca. 30 s)" reset={false} />}
+      </div>
     </div>
   );
 }
